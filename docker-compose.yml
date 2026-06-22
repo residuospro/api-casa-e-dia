@@ -1,0 +1,23 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: casa-em-dia-api
+    ports:
+      - '${PORT:-3000}:3000'
+    environment:
+      - DATABASE_URL=postgresql://casa-em-dia-user:20172023@147.79.110.185:5432/casa-em-dia-db
+      - JWT_SECRET=${JWT_SECRET:-dev-secret}
+      - PORT=3000
+      - EMAIL_HOST=${EMAIL_HOST}
+      - EMAIL_PORT=${EMAIL_PORT:-587}
+      - EMAIL_USER=${EMAIL_USER}
+      - EMAIL_PASS=${EMAIL_PASS}
+      - EMAIL_FROM=${EMAIL_FROM:-noreply@casaemdia.com}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
+    volumes:
+      - uploads:/app/uploads
+
+volumes:
+  uploads:

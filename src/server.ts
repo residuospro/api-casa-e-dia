@@ -1,0 +1,26 @@
+import 'dotenv/config';
+import http from 'http';
+import express from 'express';
+import cors from 'cors';
+import routes from './routes';
+import uploadRoutes from './routes/upload.routes';
+import { errorMiddleware } from './middlewares/error.middleware';
+import { env } from './config/env';
+import { initSocket } from './socket';
+
+const app = express();
+
+app.use(cors({ origin: env.frontendUrl, credentials: true }));
+app.use(express.json());
+
+app.use(routes);
+app.use('/uploads', uploadRoutes);
+
+app.use(errorMiddleware);
+
+const httpServer = http.createServer(app);
+initSocket(httpServer);
+
+httpServer.listen(env.port, () => {
+  console.log(`Servidor rodando na porta ${env.port}`);
+});

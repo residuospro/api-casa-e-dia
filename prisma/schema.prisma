@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TipoPessoa {
+  MARIDO
+  ESPOSA
+  FILHO
+  FILHA
+  OUTRO
+}
+
+enum Genero {
+  MASCULINO
+  FEMININO
+  OUTRO
+}
+
+enum Permissao {
+  ADMIN
+  USUARIO
+}
+
+enum NotificacaoTipo {
+  CONVITE_FAMILIA
+}
+
+enum ConviteStatus {
+  PENDENTE
+  ACEITO
+  RECUSADO
+}
+
+model Usuario {
+  id                  String          @id @default(cuid())
+  nome                String
+  email               String          @unique
+  senha               String
+  celular             String?
+  fotoPerfil          String?
+  genero              Genero?
+  primeiroAcesso      Boolean         @default(true)
+  tokenPrimeiroAcesso String?
+  tokenExpiraEm       DateTime?
+  criadoEm            DateTime        @default(now())
+  membros             MembroFamilia[]
+  notificacoes        Notificacao[]
+
+  @@map("usuarios")
+}
+
+model Familia {
+  id       String          @id @default(cuid())
+  nome     String
+  criadoEm DateTime        @default(now())
+  membros  MembroFamilia[]
+
+  @@map("familias")
+}
+
+model MembroFamilia {
+  id          String          @id @default(cuid())
+  usuarioId   String?
+  familiaId   String
+  nome        String?
+  fotoPerfil  String?
+  genero      Genero?
+  tipoPessoa  TipoPessoa
+  permissao   Permissao?
+  dependente      Boolean         @default(false)
+  status          ConviteStatus   @default(PENDENTE)
+  conviteEnviado  Boolean         @default(false)
+  criadoEm        DateTime        @default(now())
+  usuario     Usuario?    @relation(fields: [usuarioId], references: [id])
+  familia     Familia     @relation(fields: [familiaId], references: [id])
+
+  @@map("membros_familia")
+}
+
+model Notificacao {
+  id        String           @id @default(cuid())
+  usuarioId String
+  tipo      NotificacaoTipo
+  lido      Boolean          @default(false)
+  titulo    String
+  mensagem  String
+  dados     String?
+  criadoEm  DateTime         @default(now())
+  usuario   Usuario          @relation(fields: [usuarioId], references: [id])
+
+  @@map("notificacoes")
+}
