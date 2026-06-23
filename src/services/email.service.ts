@@ -11,12 +11,8 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export async function sendInviteEmail(
-  to: string,
-  nome: string,
-  nomeFamilia: string,
-) {
-  const link = `${env.frontendUrl}/convites`;
+export async function sendInviteEmail(to: string, nome: string, nomeFamilia: string) {
+  const link = `${env.frontendUrl}/notificacao`;
 
   const info = await transporter.sendMail({
     from: env.email.from,
@@ -26,7 +22,7 @@ export async function sendInviteEmail(
       <h2>Olá, ${nome}!</h2>
       <p>Você foi convidado(a) para fazer parte da família <strong>${nomeFamilia}</strong>.</p>
       <p>Clique no link abaixo para ver seus convites:</p>
-      <a href="${link}" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px">Ver Convites</a>
+      <a href="${link}" style="display:inline-block;padding:12px 24px;background:#53864C;color:#fff;text-decoration:none;border-radius:6px">Ver Convites</a>
     `,
   });
 
