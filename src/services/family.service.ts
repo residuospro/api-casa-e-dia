@@ -192,6 +192,20 @@ export class FamilyService {
     return membros.map(mapMembro);
   }
 
+  async listarOpcoesMembros(familiaId: string) {
+    const familia = await familyRepository.findFamiliaById(familiaId);
+    if (!familia) {
+      throw new AppError('Família não encontrada', 404);
+    }
+
+    const membros = await familyRepository.findMembrosByFamilia(familiaId);
+
+    return membros.map((m) => ({
+      text: m.nome ?? m.usuario?.nome ?? 'Sem nome',
+      value: m.id,
+    }));
+  }
+
   async buscarMembros(familiaId: string, query: string) {
     const familia = await familyRepository.findFamiliaById(familiaId);
     if (!familia) {

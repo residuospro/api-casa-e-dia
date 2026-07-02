@@ -33,6 +33,16 @@ export const notificationRepository = {
     });
   },
 
+  findCicloNotificationExists(usuarioId: string, cicloId: string) {
+    return prisma.notificacao.findFirst({
+      where: {
+        usuarioId,
+        tipo: 'CICLO_VENCIDO',
+        dados: { contains: cicloId },
+      },
+    });
+  },
+
   markAsRead(id: string) {
     return prisma.notificacao.update({
       where: { id },

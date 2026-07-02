@@ -44,6 +44,13 @@ export const familyRepository = {
     });
   },
 
+  findMembrosAtivosByFamilia(familiaId: string) {
+    return prisma.membroFamilia.findMany({
+      where: { familiaId, status: 'ACEITO' },
+      select: { id: true, usuarioId: true, nome: true },
+    });
+  },
+
   searchMembros(familiaId: string, query: string) {
     return prisma.membroFamilia.findMany({
       where: {

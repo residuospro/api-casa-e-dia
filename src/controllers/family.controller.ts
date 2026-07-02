@@ -199,6 +199,16 @@ export const familyController = {
     }
   },
 
+  async listarOpcoesMembros(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { familiaId } = req.params;
+      const resultado = await familyService.listarOpcoesMembros(familiaId);
+      res.json(resultado);
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async buscarMembros(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { familiaId } = req.params;

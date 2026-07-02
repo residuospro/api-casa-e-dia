@@ -22,6 +22,7 @@ router.post(
 );
 router.post('/:familiaId/membros', authMiddleware, familyController.convidarMembro);
 router.get('/:familiaId/membros', authMiddleware, familyController.listarMembros);
+router.get('/:familiaId/membros/opcoes', authMiddleware, familyController.listarOpcoesMembros);
 router.get('/:familiaId/membros/buscar', authMiddleware, familyController.buscarMembros);
 router.get('/:familiaId/membros/:membroId', authMiddleware, familyController.obterMembro);
 router.put(
