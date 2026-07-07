@@ -29,6 +29,9 @@ importers:
       multer:
         specifier: 1.4.5-lts.1
         version: 1.4.5-lts.1
+      node-cron:
+        specifier: ^4.6.0
+        version: 4.6.0
       nodemailer:
         specifier: ^9.0.0
         version: 9.0.0
@@ -57,6 +60,9 @@ importers:
       '@types/node':
         specifier: ^22.0.0
         version: 22.19.21
+      '@types/node-cron':
+        specifier: ^3.0.11
+        version: 3.0.11
       '@types/nodemailer':
         specifier: ^8.0.1
         version: 8.0.1
@@ -699,6 +705,9 @@ packages:
 
   '@types/multer@1.4.12':
     resolution: {integrity: sha512-pQ2hoqvXiJt2FP9WQVLPRO+AmiIm/ZYkavPlIQnx282u4ZrVdztx0pkh3jjpQt0Kz+YI0YhSG264y08UJKoUQg==}
+
+  '@types/node-cron@3.0.11':
+    resolution: {integrity: sha512-0ikrnug3/IyneSHqCBeslAhlK2aBfYek1fGo4bP4QnZPmiqSGRK+Oy7ZMisLWkesffJvQ1cqAcBnJC+8+nxIAg==}
 
   '@types/node@22.19.21':
     resolution: {integrity: sha512-VMeFBSCKQKmm2swI2kW51SFusDqekC6q9trBCvJ/JliDchFSuoYYKN7yVNjPthP1HKZcx3U1gI/wTcEBjEFKTA==}
@@ -1862,6 +1871,10 @@ packages:
 
   neo-async@2.6.2:
     resolution: {integrity: sha512-Yd3UES5mWCSqR+qNT93S3UoYUkqAZ9lLg8a7g9rimsWmYGK8cVToA4/sF3RrshdyV3sAGMXVUmpMYOw+dLpOuw==}
+
+  node-cron@4.6.0:
+    resolution: {integrity: sha512-Si/bzYiKRHOB8/a99T2+SDGN582ONDMSTlJr5oCkT6GtnqPjZ2s10eoQRYkW9ZHwjVxONL+W8Fb+qR0AHMQsdg==}
+    engines: {node: '>=20'}
 
   node-int64@0.4.0:
     resolution: {integrity: sha512-O5lz91xSOeoXP6DulyHfllpq+Eg00MWitZIbtPfoSEvqIHdl5gfcY6hYzDWnj0qD5tz52PI08u9qUvSVeUBeHw==}
@@ -3101,6 +3114,8 @@ snapshots:
   '@types/multer@1.4.12':
     dependencies:
       '@types/express': 4.17.25
+
+  '@types/node-cron@3.0.11': {}
 
   '@types/node@22.19.21':
     dependencies:
@@ -4540,6 +4555,8 @@ snapshots:
   negotiator@0.6.3: {}
 
   neo-async@2.6.2: {}
+
+  node-cron@4.6.0: {}
 
   node-int64@0.4.0: {}
 

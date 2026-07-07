@@ -7,6 +7,7 @@ import uploadRoutes from './routes/upload.routes';
 import { errorMiddleware } from './middlewares/error.middleware';
 import { env } from './config/env';
 import { initSocket } from './socket';
+import { initScheduler } from './scheduler';
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.use(errorMiddleware);
 
 const httpServer = http.createServer(app);
 initSocket(httpServer);
+initScheduler();
 
 httpServer.listen(env.port, () => {
   console.log(`Servidor rodando na porta ${env.port}`);

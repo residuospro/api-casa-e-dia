@@ -12,4 +12,5 @@ export const env = {
     from: process.env.EMAIL_FROM || 'noreply@casaemdia.com',
   },
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+  schedulerInterval: process.env.SCHEDULER_INTERVAL || '* * * * *',
 };

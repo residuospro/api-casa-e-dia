@@ -30,6 +30,7 @@ enum Permissao {
 enum NotificacaoTipo {
   CONVITE_FAMILIA
   CICLO_VENCIDO
+  EXECUCAO_TAREFA
 }
 
 enum TipoTarefa {
@@ -185,17 +186,18 @@ model Tarefa {
 }
 
 model ExecucaoTarefa {
-  id                String         @id @default(cuid())
-  tarefaId          String
-  data              DateTime
-  status            StatusExecucao @default(AGENDADA)
-  pontosObtidos     Int?
-  concluidoPorId    String?
-  concluidoEm       DateTime?
-  notificacaoCriada Boolean        @default(false)
-  criadoEm          DateTime       @default(now())
-  tarefa            Tarefa         @relation(fields: [tarefaId], references: [id], onDelete: Cascade)
-  concluidoPor      MembroFamilia? @relation("execucoesConcluidas", fields: [concluidoPorId], references: [id])
+  id                   String         @id @default(cuid())
+  tarefaId             String
+  data                 DateTime
+  status               StatusExecucao @default(AGENDADA)
+  pontosObtidos        Int?
+  concluidoPorId       String?
+  concluidoEm          DateTime?
+  notificacaoCriada    Boolean        @default(false)
+  notificacaoAtrasada  Boolean        @default(false)
+  criadoEm             DateTime       @default(now())
+  tarefa               Tarefa         @relation(fields: [tarefaId], references: [id], onDelete: Cascade)
+  concluidoPor         MembroFamilia? @relation("execucoesConcluidas", fields: [concluidoPorId], references: [id])
 
   @@map("execucoes_tarefa")
 }
