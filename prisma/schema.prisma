@@ -50,6 +50,13 @@ enum ModoDistribuicao {
   REVEZAMENTO
 }
 
+enum StatusExecucao {
+  AGENDADA
+  CONCLUIDA
+  ATRASADA
+  CANCELADA
+}
+
 enum ConviteStatus {
   PENDENTE
   ACEITO
@@ -103,7 +110,7 @@ model MembroFamilia {
   familia         Familia           @relation(fields: [familiaId], references: [id])
   tarefasCriadas  Tarefa[]          @relation("criadorTarefa")
   tarefasComoResponsavel Tarefa[]   @relation("responsavelTarefa")
-  execucoesTarefa ExecucaoTarefa[]
+  execucoesConcluidas ExecucaoTarefa[] @relation("execucoesConcluidas")
 
   @@map("membros_familia")
 }
@@ -154,7 +161,7 @@ model Gamificacao {
 }
 
 model Tarefa {
-  id                 String              @id @default(cuid())
+  id                 String            @id @default(cuid())
   familiaId          String
   cicloId            String?
   titulo             String
@@ -163,42 +170,32 @@ model Tarefa {
   categoria          Categoria
   modoDistribuicao   ModoDistribuicao?
   responsavelAtualId String?
-  pontos             Int                 @default(0)
-  ativo              Boolean             @default(true)
+  pontos             Int               @default(0)
+  ativo              Boolean           @default(true)
   criadoPorId        String
-  criadoEm           DateTime            @default(now())
-  atualizadoEm       DateTime            @updatedAt
-  familia            Familia             @relation(fields: [familiaId], references: [id], onDelete: Cascade)
-  ciclo              Ciclo?              @relation(fields: [cicloId], references: [id], onDelete: SetNull)
-  responsavelAtual   MembroFamilia?      @relation("responsavelTarefa", fields: [responsavelAtualId], references: [id])
-  criadoPor          MembroFamilia       @relation("criadorTarefa", fields: [criadoPorId], references: [id])
-  agendamentos       AgendamentoTarefa[]
+  criadoEm           DateTime          @default(now())
+  atualizadoEm       DateTime          @updatedAt
+  familia            Familia           @relation(fields: [familiaId], references: [id], onDelete: Cascade)
+  ciclo              Ciclo?            @relation(fields: [cicloId], references: [id], onDelete: SetNull)
+  responsavelAtual   MembroFamilia?    @relation("responsavelTarefa", fields: [responsavelAtualId], references: [id])
+  criadoPor          MembroFamilia     @relation("criadorTarefa", fields: [criadoPorId], references: [id])
   execucoes          ExecucaoTarefa[]
 
   @@map("tarefas")
 }
 
-model AgendamentoTarefa {
-  id        String  @id @default(cuid())
-  tarefaId  String
-  diaSemana Int?
-  horario   String
-  tarefa    Tarefa  @relation(fields: [tarefaId], references: [id], onDelete: Cascade)
-
-  @@map("agendamentos_tarefa")
-}
-
 model ExecucaoTarefa {
-  id           String        @id @default(cuid())
-  tarefaId     String
-  membroId     String
-  dataExecucao DateTime
-  concluida    Boolean       @default(true)
-  observacao   String?
-  pontosGerados Int          @default(0)
-  criadoEm     DateTime      @default(now())
-  tarefa       Tarefa        @relation(fields: [tarefaId], references: [id], onDelete: Cascade)
-  membro       MembroFamilia @relation(fields: [membroId], references: [id])
+  id                String         @id @default(cuid())
+  tarefaId          String
+  data              DateTime
+  status            StatusExecucao @default(AGENDADA)
+  pontosObtidos     Int?
+  concluidoPorId    String?
+  concluidoEm       DateTime?
+  notificacaoCriada Boolean        @default(false)
+  criadoEm          DateTime       @default(now())
+  tarefa            Tarefa         @relation(fields: [tarefaId], references: [id], onDelete: Cascade)
+  concluidoPor      MembroFamilia? @relation("execucoesConcluidas", fields: [concluidoPorId], references: [id])
 
   @@map("execucoes_tarefa")
 }

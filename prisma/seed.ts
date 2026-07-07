@@ -6,7 +6,6 @@ async function main() {
   await prisma.ciclo.deleteMany();
   await prisma.gamificacao.deleteMany();
   await prisma.execucaoTarefa.deleteMany();
-  await prisma.agendamentoTarefa.deleteMany();
   await prisma.tarefa.deleteMany();
 
   const familia = await prisma.familia.findFirst();
@@ -93,6 +92,12 @@ async function main() {
     },
   ];
 
+  const hoje = new Date();
+  const amanha = new Date(hoje);
+  amanha.setDate(amanha.getDate() + 1);
+  const depoisAmanha = new Date(hoje);
+  depoisAmanha.setDate(depoisAmanha.getDate() + 2);
+
   for (const t of tarefasData) {
     const tarefa = await prisma.tarefa.create({
       data: {
@@ -105,11 +110,11 @@ async function main() {
         pontos: t.pontos,
         responsavelAtualId: t.responsavelAtualId,
         criadoPorId: admin.id,
-        agendamentos: {
+        execucoes: {
           create: [
-            { diaSemana: 1, horario: '08:00' },
-            { diaSemana: 3, horario: '08:00' },
-            { diaSemana: 5, horario: '08:00' },
+            { data: hoje, status: 'AGENDADA' },
+            { data: amanha, status: 'AGENDADA' },
+            { data: depoisAmanha, status: 'AGENDADA' },
           ],
         },
       },

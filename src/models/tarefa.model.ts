@@ -1,4 +1,4 @@
-import { TipoTarefa, Categoria, ModoDistribuicao } from './enums';
+import { TipoTarefa, Categoria, ModoDistribuicao, StatusExecucao } from './enums';
 
 export interface Tarefa {
   id: string;
@@ -17,6 +17,16 @@ export interface Tarefa {
   atualizadoEm: Date;
 }
 
+export interface CriarExecucaoDTO {
+  id?: string;
+  data: Date;
+  status: StatusExecucao;
+  pontosObtidos: number | null;
+  concluidoPorId?: string | null;
+  concluidoEm?: Date | null;
+  notificacaoCriada?: boolean;
+}
+
 export interface CriarTarefaDTO {
   familiaId: string;
   cicloId?: string | null;
@@ -28,10 +38,13 @@ export interface CriarTarefaDTO {
   responsavelAtualId?: string | null;
   pontos?: number;
   criadoPorId: string;
-  agendamentos?: {
-    diaSemana: number | null;
-    horario: string;
-  }[] | null;
+  execucoes?: CriarExecucaoDTO[] | null;
+}
+
+export interface AtualizarExecucaoDTO {
+  data: Date | string;
+  status?: StatusExecucao;
+  pontosObtidos?: number | null;
 }
 
 export interface AtualizarTarefaDTO {
@@ -44,14 +57,9 @@ export interface AtualizarTarefaDTO {
   responsavelAtualId?: string | null;
   pontos?: number | null;
   ativo?: boolean | null;
-  agendamentos?: {
-    diaSemana: number | null;
-    horario: string;
-  }[] | null;
+  execucoes?: AtualizarExecucaoDTO[] | null;
 }
 
 export interface ConcluirTarefaDTO {
-  tarefaId: string;
-  membroId: string;
-  observacao?: string | null;
+  execucaoId: string;
 }

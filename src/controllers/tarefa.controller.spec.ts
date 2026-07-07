@@ -28,10 +28,12 @@ jest.mock('../repositories/tarefa.repository', () => ({
     findByFamiliaWithFilters: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
-    createExecucao: jest.fn(),
     findGamificacaoAtiva: jest.fn(),
     findRanking: jest.fn(),
     findMembrosByFamilia: jest.fn(),
+    findExecucaoById: jest.fn(),
+    updateExecucao: jest.fn(),
+    atualizarExecucoesAtrasadas: jest.fn(),
   },
 }));
 
@@ -60,10 +62,27 @@ function makeTarefa(overrides = {}) {
     criadoPorId: 'criador-id',
     criadoEm: new Date().toISOString(),
     atualizadoEm: new Date().toISOString(),
-    agendamentos: [],
+    execucoes: [
+      { id: 'exec-id', data: new Date().toISOString(), status: 'AGENDADA', pontosObtidos: null, concluidoPorId: null, concluidoEm: null, notificacaoCriada: false },
+    ],
     ciclo: null,
     responsavelAtual: { id: 'membro-id', nome: 'Maria', fotoPerfil: null, genero: 'FEMININO' },
     criadoPor: { id: 'criador-id', nome: 'João', fotoPerfil: null },
+    ...overrides,
+  };
+}
+
+function makeExecucao(overrides = {}) {
+  return {
+    id: 'exec-id',
+    tarefaId: 'tarefa-id',
+    data: new Date().toISOString(),
+    status: 'AGENDADA',
+    pontosObtidos: null,
+    concluidoPorId: null,
+    concluidoEm: null,
+    notificacaoCriada: false,
+    tarefa: makeTarefa(),
     ...overrides,
   };
 }
@@ -107,6 +126,7 @@ describe('TarefaController (integração)', () => {
   describe('GET /families/:familiaId/tarefas', () => {
     it('deve listar tarefas com paginação', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id' });
+      tarefaRepository.atualizarExecucoesAtrasadas.mockResolvedValue({ count: 0 });
       tarefaRepository.findByFamiliaWithFilters.mockResolvedValue({
         data: [makeTarefa()],
         total: 1,
@@ -126,6 +146,7 @@ describe('TarefaController (integração)', () => {
 
     it('deve aceitar filtros via query params', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id' });
+      tarefaRepository.atualizarExecucoesAtrasadas.mockResolvedValue({ count: 0 });
       tarefaRepository.findByFamiliaWithFilters.mockResolvedValue({
         data: [makeTarefa()],
         total: 1,
@@ -142,6 +163,7 @@ describe('TarefaController (integração)', () => {
 
     it('deve aplicar limites na paginação', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id' });
+      tarefaRepository.atualizarExecucoesAtrasadas.mockResolvedValue({ count: 0 });
       tarefaRepository.findByFamiliaWithFilters.mockResolvedValue({
         data: [],
         total: 0,
@@ -158,17 +180,29 @@ describe('TarefaController (integração)', () => {
   });
 
   describe('POST /families/:familiaId/tarefas/:id/concluir', () => {
-    it('deve concluir tarefa', async () => {
+    it('deve concluir execução', async () => {
       familyRepository.findMembroByUsuarioAndFamilia.mockResolvedValue({ id: 'membro-id' });
       tarefaRepository.findById.mockResolvedValue(makeTarefa());
+      tarefaRepository.findExecucaoById.mockResolvedValue(makeExecucao());
       tarefaRepository.findGamificacaoAtiva.mockResolvedValue(null);
+
+      const response = await request(app)
+        .post('/families/fam-id/tarefas/tarefa-id/concluir')
+        .send({ execucaoId: 'exec-id' });
+
+      expect(response.status).toBe(200);
+      expect(response.body.message).toBe('Tarefa concluída com sucesso');
+    });
+
+    it('deve retornar 400 sem execucaoId', async () => {
+      familyRepository.findMembroByUsuarioAndFamilia.mockResolvedValue({ id: 'membro-id' });
+      tarefaRepository.findById.mockResolvedValue(makeTarefa());
 
       const response = await request(app)
         .post('/families/fam-id/tarefas/tarefa-id/concluir')
         .send({});
 
-      expect(response.status).toBe(200);
-      expect(response.body.message).toBe('Tarefa concluída com sucesso');
+      expect(response.status).toBe(400);
     });
   });
 
@@ -176,7 +210,7 @@ describe('TarefaController (integração)', () => {
     it('deve retornar ranking', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id' });
       tarefaRepository.findRanking.mockResolvedValue([
-        { membroId: 'm1', _sum: { pontosGerados: 30 } },
+        { concluidoPorId: 'm1', _sum: { pontosObtidos: 30 } },
       ]);
       tarefaRepository.findMembrosByFamilia.mockResolvedValue([
         { id: 'm1', nome: 'Maria', fotoPerfil: null },

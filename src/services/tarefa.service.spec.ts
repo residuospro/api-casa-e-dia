@@ -1,6 +1,6 @@
 import { TarefaService } from './tarefa.service';
 import { AppError } from './auth.service';
-import { TipoTarefa, Categoria, ModoDistribuicao } from '../models/enums';
+import { TipoTarefa, Categoria, ModoDistribuicao, StatusExecucao } from '../models/enums';
 
 jest.mock('../repositories/tarefa.repository', () => ({
   tarefaRepository: {
@@ -10,10 +10,12 @@ jest.mock('../repositories/tarefa.repository', () => ({
     findByFamiliaWithFilters: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
-    createExecucao: jest.fn(),
     findGamificacaoAtiva: jest.fn(),
     findRanking: jest.fn(),
     findMembrosByFamilia: jest.fn(),
+    findExecucaoById: jest.fn(),
+    updateExecucao: jest.fn(),
+    atualizarExecucoesAtrasadas: jest.fn(),
   },
 }));
 
@@ -42,10 +44,25 @@ function makeTarefa(overrides = {}) {
     criadoPorId: 'criador-id',
     criadoEm: new Date(),
     atualizadoEm: new Date(),
-    agendamentos: [],
+    execucoes: [],
     ciclo: null,
     responsavelAtual: { id: 'membro-id', nome: 'Maria', fotoPerfil: null, genero: 'FEMININO' },
     criadoPor: { id: 'criador-id', nome: 'João', fotoPerfil: null },
+    ...overrides,
+  };
+}
+
+function makeExecucao(overrides = {}) {
+  return {
+    id: 'exec-id',
+    tarefaId: 'tarefa-id',
+    data: new Date('2026-07-01T18:00:00'),
+    status: 'AGENDADA',
+    pontosObtidos: null,
+    concluidoPorId: null,
+    concluidoEm: null,
+    notificacaoCriada: false,
+    tarefa: makeTarefa(),
     ...overrides,
   };
 }
@@ -86,6 +103,42 @@ describe('TarefaService', () => {
       expect(resultado.titulo).toBe('Lavar louça');
     });
 
+    it('deve criar tarefa com execuções', async () => {
+      familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id', nome: 'Família Teste' });
+      tarefaRepository.create.mockResolvedValue(makeTarefa());
+
+      const resultado = await service.criar({
+        familiaId: 'fam-id',
+        titulo: 'Lavar louça',
+        tipo: TipoTarefa.FAMILIAR,
+        categoria: Categoria.CASA,
+        modoDistribuicao: ModoDistribuicao.FIXA,
+        responsavelAtualId: 'membro-id',
+        criadoPorId: 'criador-id',
+        pontos: 10,
+        execucoes: [
+          { data: new Date('2026-07-01T18:00:00'), status: StatusExecucao.AGENDADA, pontosObtidos: null },
+          { data: new Date('2026-07-02T18:00:00'), status: StatusExecucao.AGENDADA, pontosObtidos: null },
+        ],
+      });
+
+      expect(tarefaRepository.create).toHaveBeenCalledWith({
+        familiaId: 'fam-id',
+        titulo: 'Lavar louça',
+        tipo: 'FAMILIAR',
+        categoria: 'CASA',
+        modoDistribuicao: 'FIXA',
+        responsavelAtualId: 'membro-id',
+        criadoPorId: 'criador-id',
+        pontos: 10,
+        execucoes: [
+          { data: new Date('2026-07-01T18:00:00'), status: 'AGENDADA', pontosObtidos: null },
+          { data: new Date('2026-07-02T18:00:00'), status: 'AGENDADA', pontosObtidos: null },
+        ],
+      });
+      expect(resultado.titulo).toBe('Lavar louça');
+    });
+
     it('deve criar tarefa pessoal com responsável', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id', nome: 'Família Teste' });
       tarefaRepository.create.mockResolvedValue(makeTarefa({ tipo: 'PESSOAL', titulo: 'Estudar inglês' }));
@@ -97,6 +150,7 @@ describe('TarefaService', () => {
         categoria: Categoria.ESTUDO,
         responsavelAtualId: 'membro-id',
         criadoPorId: 'criador-id',
+        pontos: 0,
       });
 
       expect(resultado.titulo).toBe('Estudar inglês');
@@ -150,6 +204,7 @@ describe('TarefaService', () => {
   describe('listar', () => {
     it('deve listar tarefas com paginação e filtros', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id' });
+      tarefaRepository.atualizarExecucoesAtrasadas.mockResolvedValue({ count: 0 });
       tarefaRepository.findByFamiliaWithFilters.mockResolvedValue({
         data: [makeTarefa()],
         total: 1,
@@ -164,6 +219,7 @@ describe('TarefaService', () => {
         porPaginaResposta: 10,
       });
 
+      expect(tarefaRepository.atualizarExecucoesAtrasadas).toHaveBeenCalledWith('fam-id');
       expect(tarefaRepository.findByFamiliaWithFilters).toHaveBeenCalledWith('fam-id', {
         filtro: { tipo: 'FAMILIAR' },
         ordenacao: [{ coluna: 'titulo', direcao: 'asc' }],
@@ -180,6 +236,7 @@ describe('TarefaService', () => {
 
     it('deve usar padrões quando nenhum filtro fornecido', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id' });
+      tarefaRepository.atualizarExecucoesAtrasadas.mockResolvedValue({ count: 0 });
       tarefaRepository.findByFamiliaWithFilters.mockResolvedValue({
         data: [makeTarefa()],
         total: 1,
@@ -263,59 +320,77 @@ describe('TarefaService', () => {
   });
 
   describe('concluir', () => {
-    it('deve concluir tarefa e gerar pontos com gamificação ativa', async () => {
+    it('deve concluir execução e gerar pontos com gamificação ativa', async () => {
       tarefaRepository.findById.mockResolvedValue(makeTarefa({ tipo: 'FAMILIAR', pontos: 10 }));
+      tarefaRepository.findExecucaoById.mockResolvedValue(makeExecucao());
       tarefaRepository.findGamificacaoAtiva.mockResolvedValue({ id: 'gam-id', ativo: true });
 
-      const resultado = await service.concluir('fam-id', 'tarefa-id', 'membro-id');
+      const resultado = await service.concluir('fam-id', 'tarefa-id', 'exec-id', 'membro-id');
 
-      expect(tarefaRepository.createExecucao).toHaveBeenCalledWith({
-        tarefaId: 'tarefa-id',
-        membroId: 'membro-id',
-        dataExecucao: expect.any(Date),
-        observacao: undefined,
-        pontosGerados: 10,
+      expect(tarefaRepository.updateExecucao).toHaveBeenCalledWith('exec-id', {
+        status: 'CONCLUIDA',
+        pontosObtidos: 10,
+        concluidoPorId: 'membro-id',
+        concluidoEm: expect.any(Date),
       });
       expect(resultado.pontosGerados).toBe(10);
     });
 
-    it('deve concluir tarefa pessoal sem gerar pontos mesmo com gamificação ativa', async () => {
+    it('deve concluir execução pessoal sem gerar pontos', async () => {
       tarefaRepository.findById.mockResolvedValue(makeTarefa({ tipo: 'PESSOAL', pontos: 10 }));
+      tarefaRepository.findExecucaoById.mockResolvedValue(makeExecucao());
       tarefaRepository.findGamificacaoAtiva.mockResolvedValue({ id: 'gam-id', ativo: true });
 
-      const resultado = await service.concluir('fam-id', 'tarefa-id', 'membro-id');
+      const resultado = await service.concluir('fam-id', 'tarefa-id', 'exec-id', 'membro-id');
 
-      expect(tarefaRepository.createExecucao).toHaveBeenCalledWith({
-        tarefaId: 'tarefa-id',
-        membroId: 'membro-id',
-        dataExecucao: expect.any(Date),
-        observacao: undefined,
-        pontosGerados: 0,
+      expect(tarefaRepository.updateExecucao).toHaveBeenCalledWith('exec-id', {
+        status: 'CONCLUIDA',
+        pontosObtidos: 0,
+        concluidoPorId: 'membro-id',
+        concluidoEm: expect.any(Date),
       });
       expect(resultado.pontosGerados).toBe(0);
     });
 
-    it('deve concluir tarefa sem gerar pontos sem gamificação', async () => {
+    it('deve concluir execução sem gerar pontos sem gamificação', async () => {
       tarefaRepository.findById.mockResolvedValue(makeTarefa({ pontos: 10 }));
+      tarefaRepository.findExecucaoById.mockResolvedValue(makeExecucao());
       tarefaRepository.findGamificacaoAtiva.mockResolvedValue(null);
 
-      const resultado = await service.concluir('fam-id', 'tarefa-id', 'membro-id', 'Feito!');
+      const resultado = await service.concluir('fam-id', 'tarefa-id', 'exec-id', 'membro-id');
 
-      expect(tarefaRepository.createExecucao).toHaveBeenCalledWith({
-        tarefaId: 'tarefa-id',
-        membroId: 'membro-id',
-        dataExecucao: expect.any(Date),
-        observacao: 'Feito!',
-        pontosGerados: 0,
+      expect(tarefaRepository.updateExecucao).toHaveBeenCalledWith('exec-id', {
+        status: 'CONCLUIDA',
+        pontosObtidos: 0,
+        concluidoPorId: 'membro-id',
+        concluidoEm: expect.any(Date),
       });
       expect(resultado.pontosGerados).toBe(0);
+    });
+
+    it('deve lançar erro se execução não existir', async () => {
+      tarefaRepository.findById.mockResolvedValue(makeTarefa());
+      tarefaRepository.findExecucaoById.mockResolvedValue(null);
+
+      await expect(
+        service.concluir('fam-id', 'tarefa-id', 'exec-id', 'membro-id'),
+      ).rejects.toThrow(AppError);
+    });
+
+    it('deve lançar erro se execução já estiver concluída', async () => {
+      tarefaRepository.findById.mockResolvedValue(makeTarefa());
+      tarefaRepository.findExecucaoById.mockResolvedValue(makeExecucao({ status: 'CONCLUIDA' }));
+
+      await expect(
+        service.concluir('fam-id', 'tarefa-id', 'exec-id', 'membro-id'),
+      ).rejects.toThrow(AppError);
     });
 
     it('deve lançar erro se tarefa estiver inativa', async () => {
       tarefaRepository.findById.mockResolvedValue(makeTarefa({ ativo: false }));
 
       await expect(
-        service.concluir('fam-id', 'tarefa-id', 'membro-id'),
+        service.concluir('fam-id', 'tarefa-id', 'exec-id', 'membro-id'),
       ).rejects.toThrow(AppError);
     });
 
@@ -323,8 +398,19 @@ describe('TarefaService', () => {
       tarefaRepository.findById.mockResolvedValue(null);
 
       await expect(
-        service.concluir('fam-id', 'tarefa-id', 'membro-id'),
+        service.concluir('fam-id', 'tarefa-id', 'exec-id', 'membro-id'),
       ).rejects.toThrow(AppError);
+    });
+  });
+
+  describe('atualizarExecucoesAtrasadas', () => {
+    it('deve atualizar execuções atrasadas', async () => {
+      tarefaRepository.atualizarExecucoesAtrasadas.mockResolvedValue({ count: 3 });
+
+      const resultado = await service.atualizarExecucoesAtrasadas('fam-id');
+
+      expect(tarefaRepository.atualizarExecucoesAtrasadas).toHaveBeenCalledWith('fam-id');
+      expect(resultado).toEqual({ count: 3 });
     });
   });
 
@@ -332,8 +418,8 @@ describe('TarefaService', () => {
     it('deve retornar ranking ordenado por pontos', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id' });
       tarefaRepository.findRanking.mockResolvedValue([
-        { membroId: 'm1', _sum: { pontosGerados: 30 } },
-        { membroId: 'm2', _sum: { pontosGerados: 10 } },
+        { concluidoPorId: 'm1', _sum: { pontosObtidos: 30 } },
+        { concluidoPorId: 'm2', _sum: { pontosObtidos: 10 } },
       ]);
       tarefaRepository.findMembrosByFamilia.mockResolvedValue([
         { id: 'm1', nome: 'Maria', fotoPerfil: null },

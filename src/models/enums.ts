@@ -39,3 +39,10 @@ export enum ModoDistribuicao {
   FIXA = 'FIXA',
   REVEZAMENTO = 'REVEZAMENTO',
 }
+
+export enum StatusExecucao {
+  AGENDADA = 'AGENDADA',
+  CONCLUIDA = 'CONCLUIDA',
+  ATRASADA = 'ATRASADA',
+  CANCELADA = 'CANCELADA',
+}

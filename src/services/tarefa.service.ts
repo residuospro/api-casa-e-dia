@@ -1,7 +1,8 @@
 import { tarefaRepository } from '../repositories/tarefa.repository';
 import { familyRepository } from '../repositories/family.repository';
+import { cicloRepository } from '../repositories/ciclo.repository';
 import { AppError } from './auth.service';
-import { TipoTarefa, ModoDistribuicao } from '../models/enums';
+import { TipoTarefa, ModoDistribuicao, StatusExecucao } from '../models/enums';
 import { generateAvatar } from '../utils/avatar';
 import {
   CriarTarefaDTO,
@@ -65,6 +66,8 @@ export class TarefaService {
       throw new AppError('Família não encontrada', 404);
     }
 
+    await tarefaRepository.atualizarExecucoesAtrasadas(familiaId);
+
     const { data, total } = await tarefaRepository.findByFamiliaWithFilters(
       familiaId,
       { filtro: options.filtro, ordenacao: options.ordenacao, pagina: options.pagina, porPagina: options.porPagina },
@@ -127,7 +130,7 @@ export class TarefaService {
     return { message: 'Tarefa removida com sucesso' };
   }
 
-  async concluir(familiaId: string, tarefaId: string, membroId: string, observacao?: string) {
+  async concluir(familiaId: string, tarefaId: string, execucaoId: string, membroId: string) {
     const tarefa = await tarefaRepository.findById(tarefaId);
     if (!tarefa || tarefa.familiaId !== familiaId) {
       throw new AppError('Tarefa não encontrada', 404);
@@ -137,27 +140,110 @@ export class TarefaService {
       throw new AppError('Tarefa inativa não pode ser concluída', 400);
     }
 
-    let pontosGerados = 0;
+    const execucao = await tarefaRepository.findExecucaoById(execucaoId);
+    if (!execucao || execucao.tarefaId !== tarefaId) {
+      throw new AppError('Execução não encontrada', 404);
+    }
+
+    if (execucao.status !== StatusExecucao.AGENDADA && execucao.status !== StatusExecucao.ATRASADA) {
+      throw new AppError('Execução já foi concluída ou cancelada', 400);
+    }
+
+    let pontosObtidos = 0;
 
     if (tarefa.tipo !== 'PESSOAL') {
       const gamificacao = await tarefaRepository.findGamificacaoAtiva(familiaId);
       if (gamificacao) {
-        pontosGerados = tarefa.pontos;
+        pontosObtidos = tarefa.pontos;
       }
     }
 
-    await tarefaRepository.createExecucao({
-      tarefaId,
-      membroId,
-      dataExecucao: new Date(),
-      observacao,
-      pontosGerados,
+    await tarefaRepository.updateExecucao(execucaoId, {
+      status: StatusExecucao.CONCLUIDA,
+      pontosObtidos,
+      concluidoPorId: membroId,
+      concluidoEm: new Date(),
     });
 
     return {
       message: 'Tarefa concluída com sucesso',
-      pontosGerados,
+      pontosGerados: pontosObtidos,
     };
+  }
+
+  async concluirExecucao(familiaId: string, execucaoId: string, membroId: string) {
+    const execucao = await tarefaRepository.findExecucaoById(execucaoId);
+    if (!execucao) {
+      throw new AppError('Execução não encontrada', 404);
+    }
+
+    if (execucao.tarefa.familiaId !== familiaId) {
+      throw new AppError('Execução não encontrada', 404);
+    }
+
+    if (execucao.status !== StatusExecucao.AGENDADA && execucao.status !== StatusExecucao.ATRASADA) {
+      throw new AppError('Execução já foi concluída ou cancelada', 400);
+    }
+
+    const tarefa = execucao.tarefa;
+
+    const pontosObtidos = tarefa.pontos;
+
+    await tarefaRepository.updateExecucao(execucaoId, {
+      status: StatusExecucao.CONCLUIDA,
+      pontosObtidos,
+      concluidoPorId: membroId,
+      concluidoEm: new Date(),
+    });
+
+    return {
+      message: 'Execução concluída com sucesso',
+      pontosGerados: pontosObtidos,
+    };
+  }
+
+  async cancelarExecucao(familiaId: string, execucaoId: string) {
+    const execucao = await tarefaRepository.findExecucaoById(execucaoId);
+    if (!execucao) {
+      throw new AppError('Execução não encontrada', 404);
+    }
+
+    if (execucao.tarefa.familiaId !== familiaId) {
+      throw new AppError('Execução não encontrada', 404);
+    }
+
+    if (execucao.status !== StatusExecucao.AGENDADA && execucao.status !== StatusExecucao.ATRASADA) {
+      throw new AppError('Execução já foi concluída ou cancelada', 400);
+    }
+
+    await tarefaRepository.updateExecucao(execucaoId, {
+      status: StatusExecucao.CANCELADA,
+    });
+
+    return {
+      message: 'Execução cancelada com sucesso',
+    };
+  }
+
+  async atualizarExecucao(familiaId: string, execucaoId: string, data: Date) {
+    const execucao = await tarefaRepository.findExecucaoById(execucaoId);
+    if (!execucao) {
+      throw new AppError('Execução não encontrada', 404);
+    }
+
+    if (execucao.tarefa.familiaId !== familiaId) {
+      throw new AppError('Execução não encontrada', 404);
+    }
+
+    await tarefaRepository.updateExecucao(execucaoId, { data });
+
+    return {
+      message: 'Data da execução atualizada com sucesso',
+    };
+  }
+
+  async atualizarExecucoesAtrasadas(familiaId: string) {
+    return tarefaRepository.atualizarExecucoesAtrasadas(familiaId);
   }
 
   async ranking(familiaId: string) {
@@ -171,14 +257,53 @@ export class TarefaService {
     const membroMap = new Map(membros.map((m) => [m.id, m]));
 
     return ranking.map((item) => {
-      const membro = membroMap.get(item.membroId);
+      const membro = membroMap.get(item.concluidoPorId!);
       return {
-        membroId: item.membroId,
+        membroId: item.concluidoPorId,
         nome: membro?.nome ?? 'Desconhecido',
         fotoPerfil: membro?.fotoPerfil ?? null,
-        pontos: item._sum.pontosGerados ?? 0,
+        pontos: item._sum.pontosObtidos ?? 0,
       };
     });
+  }
+
+  async resumo(familiaId: string) {
+    const totalTarefas = await tarefaRepository.countByFamilia(familiaId);
+    const tarefasConcluidas = await tarefaRepository.countByFamiliaAndExecucaoStatus(
+      familiaId,
+      StatusExecucao.CONCLUIDA,
+    );
+    const tarefasAtrasadas = await tarefaRepository.countByFamiliaAndExecucaoStatus(
+      familiaId,
+      StatusExecucao.ATRASADA,
+    );
+
+    const cicloAtivo = await cicloRepository.findCicloAtivo(familiaId);
+    let diasRestantes = null;
+    let ciclo = null;
+
+    if (cicloAtivo) {
+      const fimCiclo = new Date(cicloAtivo.inicio);
+      fimCiclo.setDate(fimCiclo.getDate() + cicloAtivo.duracaoDias);
+      const agora = new Date();
+      const diffMs = fimCiclo.getTime() - agora.getTime();
+      diasRestantes = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+
+      ciclo = {
+        id: cicloAtivo.id,
+        nome: cicloAtivo.nome,
+        inicio: cicloAtivo.inicio,
+        duracaoDias: cicloAtivo.duracaoDias,
+      };
+    }
+
+    return {
+      totalTarefas,
+      tarefasConcluidas,
+      tarefasAtrasadas,
+      diasRestantes,
+      ciclo,
+    };
   }
 }
 

@@ -203,6 +203,7 @@ export class FamilyService {
     return membros.map((m) => ({
       text: m.nome ?? m.usuario?.nome ?? 'Sem nome',
       value: m.id,
+      fotoPerfil: m.fotoPerfil ?? m.usuario?.fotoPerfil ?? generateAvatar(m.nome ?? m.usuario?.nome ?? 'Sem nome', m.genero ?? m.usuario?.genero ?? null),
     }));
   }
 

@@ -1,9 +1,14 @@
 import { z } from 'zod';
-import { TipoTarefa, Categoria, ModoDistribuicao } from '../models/enums';
+import { TipoTarefa, Categoria, ModoDistribuicao, StatusExecucao } from '../models/enums';
 
-const agendamentoSchema = z.object({
-  diaSemana: z.number().int().min(0).max(6).nullable(),
-  horario: z.string(),
+const execucaoSchema = z.object({
+  id: z.string().optional(),
+  data: z.string().datetime().or(z.date()),
+  status: z.nativeEnum(StatusExecucao).default(StatusExecucao.AGENDADA),
+  pontosObtidos: z.number().int().nullable().default(null),
+  concluidoPorId: z.string().nullable().optional(),
+  concluidoEm: z.string().datetime().nullable().optional(),
+  notificacaoCriada: z.boolean().optional(),
 });
 
 export const criarTarefaSchema = z.object({
@@ -13,9 +18,9 @@ export const criarTarefaSchema = z.object({
   categoria: z.nativeEnum(Categoria),
   modoDistribuicao: z.nativeEnum(ModoDistribuicao).nullable().optional(),
   responsavelAtualId: z.string().nullable().optional(),
-  pontos: z.number().int().min(0).default(0),
+  pontos: z.number().int().min(0).optional(),
   cicloId: z.string().nullable().optional(),
-  agendamentos: z.array(agendamentoSchema).nullable().optional(),
+  execucoes: z.array(execucaoSchema).nullable().optional(),
 });
 
 export const atualizarTarefaSchema = z.object({
@@ -28,13 +33,21 @@ export const atualizarTarefaSchema = z.object({
   pontos: z.number().int().min(0).nullable().optional(),
   ativo: z.boolean().nullable().optional(),
   cicloId: z.string().nullable().optional(),
-  agendamentos: z.array(agendamentoSchema).nullable().optional(),
+  execucoes: z.array(execucaoSchema).nullable().optional(),
 });
 
 export const concluirTarefaSchema = z.object({
-  observacao: z.string().nullable().optional(),
+  execucaoId: z.string().min(1, 'execucaoId é obrigatório'),
 });
 
 export const rankingQuerySchema = z.object({
   familiaId: z.string().min(1),
+});
+
+export const concluirExecucaoSchema = z.object({
+  concluidoPorId: z.string().min(1, 'concluidoPorId é obrigatório'),
+});
+
+export const atualizarExecucaoSchema = z.object({
+  data: z.string().datetime({ message: 'Data inválida' }),
 });

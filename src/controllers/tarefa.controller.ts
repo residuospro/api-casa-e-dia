@@ -2,7 +2,7 @@ import { Response, NextFunction } from 'express';
 import { tarefaService } from '../services/tarefa.service';
 import { familyRepository } from '../repositories/family.repository';
 import { AuthRequest } from '../middlewares/auth.middleware';
-import { criarTarefaSchema, atualizarTarefaSchema, concluirTarefaSchema } from '../validators/tarefa.validator';
+import { criarTarefaSchema, atualizarTarefaSchema, concluirTarefaSchema, concluirExecucaoSchema, atualizarExecucaoSchema } from '../validators/tarefa.validator';
 import { ZodError } from 'zod';
 
 export const tarefaController = {
@@ -20,11 +20,27 @@ export const tarefaController = {
         return;
       }
 
+      const execucoes = dados.execucoes?.map((e) => ({
+        data: new Date(e.data),
+        status: e.status,
+        pontosObtidos: e.pontosObtidos,
+        concluidoPorId: e.concluidoPorId,
+        concluidoEm: e.concluidoEm ? new Date(e.concluidoEm) : null,
+        notificacaoCriada: e.notificacaoCriada,
+      })) ?? null;
+
       const resultado = await tarefaService.criar({
-        ...dados,
+        titulo: dados.titulo,
+        descricao: dados.descricao,
+        tipo: dados.tipo,
+        categoria: dados.categoria,
+        modoDistribuicao: dados.modoDistribuicao,
+        responsavelAtualId: dados.responsavelAtualId,
+        pontos: dados.pontos,
+        cicloId: dados.cicloId,
         familiaId,
         criadoPorId: membro.id,
-        responsavelAtualId: dados.responsavelAtualId,
+        execucoes,
       });
 
       res.status(201).json(resultado);
@@ -122,7 +138,7 @@ export const tarefaController = {
         return;
       }
 
-      const resultado = await tarefaService.concluir(familiaId, id, membro.id, dados.observacao ?? undefined);
+      const resultado = await tarefaService.concluir(familiaId, id, dados.execucaoId, membro.id);
       res.json(resultado);
     } catch (err) {
       if (err instanceof ZodError) {
@@ -136,10 +152,60 @@ export const tarefaController = {
     }
   },
 
+  async concluirExecucao(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { familiaId, execucaoId } = req.params;
+      const { concluidoPorId } = concluirExecucaoSchema.parse(req.body);
+      const resultado = await tarefaService.concluirExecucao(familiaId, execucaoId, concluidoPorId);
+      res.json(resultado);
+    } catch (err) {
+      if (err instanceof ZodError) {
+        res.status(400).json({ error: 'Bad Request', message: err.errors.map((e) => e.message) });
+        return;
+      }
+      next(err);
+    }
+  },
+
+  async cancelarExecucao(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { familiaId, execucaoId } = req.params;
+      const resultado = await tarefaService.cancelarExecucao(familiaId, execucaoId);
+      res.json(resultado);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async atualizarExecucao(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { familiaId, execucaoId } = req.params;
+      const { data } = atualizarExecucaoSchema.parse(req.body);
+      const resultado = await tarefaService.atualizarExecucao(familiaId, execucaoId, new Date(data));
+      res.json(resultado);
+    } catch (err) {
+      if (err instanceof ZodError) {
+        res.status(400).json({ error: 'Bad Request', message: err.errors.map((e) => e.message) });
+        return;
+      }
+      next(err);
+    }
+  },
+
   async ranking(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { familiaId } = req.params;
       const resultado = await tarefaService.ranking(familiaId);
+      res.json(resultado);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async resumo(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { familiaId } = req.params;
+      const resultado = await tarefaService.resumo(familiaId);
       res.json(resultado);
     } catch (err) {
       next(err);
