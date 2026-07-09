@@ -10,7 +10,10 @@ export const notificationRepository = {
     dados?: string | null;
   }) {
     return prisma.notificacao.create({
-      data: data as any,
+      data: {
+        ...data,
+        criadoEm: new Date(),
+      } as any,
     });
   },
 

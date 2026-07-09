@@ -13,6 +13,7 @@ export interface Tarefa {
   pontos: number;
   ativo: boolean;
   criadoPorId: string;
+  cicloIteracao: number | null;
   criadoEm: Date;
   atualizadoEm: Date;
 }
@@ -38,6 +39,7 @@ export interface CriarTarefaDTO {
   responsavelAtualId?: string | null;
   pontos?: number;
   criadoPorId: string;
+  cicloIteracao?: number | null;
   execucoes?: CriarExecucaoDTO[] | null;
 }
 

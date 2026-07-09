@@ -97,16 +97,24 @@ export class CicloService {
       throw new AppError('Nenhuma tarefa de revezamento encontrada neste ciclo', 400);
     }
 
-    const membros = await familyRepository.findMembrosAtivosByFamilia(familiaId);
+    let membros = ciclo.participantes;
+
     if (membros.length === 0) {
-      throw new AppError('Nenhum membro ativo na família para redistribuir tarefas', 400);
+      const membrosAtivos = await familyRepository.findMembrosAtivosByFamilia(familiaId);
+      membros = membrosAtivos.map((m) => m.id);
     }
 
-    membros.sort((a, b) => a.id.localeCompare(b.id));
+    if (membros.length === 0) {
+      throw new AppError('Nenhum membro disponível para redistribuir tarefas', 400);
+    }
+
+    const proximaIteracao = ciclo.iteracao + 1;
+
+    membros.sort((a, b) => a.localeCompare(b));
 
     const tarefasAtualizadas = tarefas.map((tarefa, indice) => {
-      const membro = membros[indice % membros.length];
-      return tarefaRepository.updateResponsavel(tarefa.id, membro.id);
+      const membroId = membros[indice % membros.length];
+      return tarefaRepository.updateResponsavel(tarefa.id, membroId, proximaIteracao);
     });
 
     const tarefasResultado = await Promise.all(tarefasAtualizadas);
@@ -114,6 +122,7 @@ export class CicloService {
     await cicloRepository.update(cicloId, {
       inicio: agora,
       ultimaRotacao: agora,
+      iteracao: proximaIteracao,
     });
 
     const cicloAtualizado = await cicloRepository.findById(cicloId);
@@ -155,6 +164,16 @@ export class CicloService {
     return cicloRepository.update(cicloId, { ativo });
   }
 
+  private async getUsuariosParaNotificar(ciclo: { familiaId: string; participantes: string[] }) {
+    if (ciclo.participantes.length > 0) {
+      const membros = await familyRepository.findMembrosByIds(ciclo.participantes);
+      return membros.filter((m) => m.usuarioId).map((m) => m.usuarioId!);
+    }
+
+    const membros = await familyRepository.findMembrosAtivosByFamilia(ciclo.familiaId);
+    return membros.filter((m) => m.usuarioId).map((m) => m.usuarioId!);
+  }
+
   async verificarCiclos(familiaId: string) {
     const familia = await familyRepository.findFamiliaById(familiaId);
     if (!familia) {
@@ -163,26 +182,23 @@ export class CicloService {
 
     const ciclosVencidos = await cicloRepository.findCiclosVencidos(familiaId);
 
-    if (ciclosVencidos.length > 0) {
-      const membros = await familyRepository.findMembrosAtivosByFamilia(familiaId);
-      const usuarios = membros.filter((m) => m.usuarioId);
+    for (const ciclo of ciclosVencidos) {
+      const usuarios = await this.getUsuariosParaNotificar(ciclo);
 
-      for (const ciclo of ciclosVencidos) {
-        for (const membro of usuarios) {
-          const notificacaoExistente = await notificationRepository.findCicloNotificationExists(
-            membro.usuarioId!,
-            ciclo.id,
-          );
+      for (const usuarioId of usuarios) {
+        const notificacaoExistente = await notificationRepository.findCicloNotificationExists(
+          usuarioId,
+          ciclo.id,
+        );
 
-          if (!notificacaoExistente) {
-            await notificationService.criar({
-              usuarioId: membro.usuarioId!,
-              tipo: NotificacaoTipo.CICLO_VENCIDO,
-              titulo: 'Ciclo venceu',
-              mensagem: `O ciclo "${ciclo.nome}" venceu. Rotacione as tarefas para redistribuí-las.`,
-              dados: JSON.stringify({ cicloId: ciclo.id }),
-            });
-          }
+        if (!notificacaoExistente) {
+          await notificationService.criar({
+            usuarioId,
+            tipo: NotificacaoTipo.CICLO_VENCIDO,
+            titulo: 'Ciclo venceu',
+            mensagem: `O ciclo "${ciclo.nome}" venceu. Rotacione as tarefas para redistribuí-las.`,
+            dados: JSON.stringify({ cicloId: ciclo.id }),
+          });
         }
       }
     }

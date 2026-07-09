@@ -51,6 +51,13 @@ export const familyRepository = {
     });
   },
 
+  findMembrosByIds(ids: string[]) {
+    return prisma.membroFamilia.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, usuarioId: true, nome: true },
+    });
+  },
+
   searchMembros(familiaId: string, query: string) {
     return prisma.membroFamilia.findMany({
       where: {

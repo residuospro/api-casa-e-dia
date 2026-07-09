@@ -139,6 +139,19 @@ export const tarefaRepository = {
               in: arrValue,
             },
           };
+        } else if (key === 'cicloId') {
+          const ids = arrValue.filter((v) => v !== 'null');
+          const hasNull = arrValue.includes('null');
+
+          if (hasNull && ids.length > 0) {
+            const orConditions: Record<string, unknown>[] = ids.map((id) => ({ cicloId: id }));
+            orConditions.push({ cicloId: null });
+            where.OR = [...(Array.isArray(where.OR) ? where.OR : []), ...orConditions];
+          } else if (hasNull) {
+            where.cicloId = null;
+          } else {
+            where.cicloId = ids.length === 1 ? ids[0] : { in: ids };
+          }
         } else {
           where[key] = arrValue.length === 1 ? arrValue[0] : { in: arrValue };
         }
@@ -215,10 +228,13 @@ export const tarefaRepository = {
     });
   },
 
-  updateResponsavel(tarefaId: string, membroId: string) {
+  updateResponsavel(tarefaId: string, membroId: string, cicloIteracao?: number) {
     return prisma.tarefa.update({
       where: { id: tarefaId },
-      data: { responsavelAtualId: membroId },
+      data: {
+        responsavelAtualId: membroId,
+        ...(cicloIteracao !== undefined ? { cicloIteracao } : {}),
+      },
     });
   },
 

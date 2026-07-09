@@ -2,12 +2,13 @@ import { tarefaRepository } from '../repositories/tarefa.repository';
 import { familyRepository } from '../repositories/family.repository';
 import { cicloRepository } from '../repositories/ciclo.repository';
 import { AppError } from './auth.service';
-import { TipoTarefa, ModoDistribuicao, StatusExecucao } from '../models/enums';
+import { TipoTarefa, ModoDistribuicao, StatusExecucao, NotificacaoTipo } from '../models/enums';
 import { generateAvatar } from '../utils/avatar';
 import {
   CriarTarefaDTO,
   AtualizarTarefaDTO,
 } from '../models/tarefa.model';
+import { notificationService } from './notification.service';
 
 function transformResponsavel(tarefa: any) {
   if (!tarefa.responsavelAtual) return tarefa;
@@ -36,16 +37,57 @@ export class TarefaService {
       }
     }
 
+    let cicloRevezamento: Awaited<ReturnType<typeof cicloRepository.findById>> | null = null;
+
     if (dto.tipo === TipoTarefa.FAMILIAR) {
       if (dto.modoDistribuicao === ModoDistribuicao.FIXA && !dto.responsavelAtualId) {
         throw new AppError('Tarefa fixa deve ter um responsável', 400);
+      }
+
+      if (dto.modoDistribuicao === ModoDistribuicao.REVEZAMENTO) {
+        if (!dto.cicloId) {
+          throw new AppError('Tarefa de revezamento deve ter um ciclo', 400);
+        }
+
+        cicloRevezamento = await cicloRepository.findById(dto.cicloId);
+        if (!cicloRevezamento) {
+          throw new AppError('Ciclo não encontrado', 404);
+        }
+
+        if (dto.responsavelAtualId && !cicloRevezamento.participantes.includes(dto.responsavelAtualId)) {
+          throw new AppError('Responsável não faz parte do ciclo', 400);
+        }
+
+        if (dto.execucoes && dto.execucoes.length > 0) {
+          const vencimento = new Date(cicloRevezamento.inicio.getTime() + cicloRevezamento.duracaoDias * 24 * 60 * 60 * 1000);
+
+          for (const execucao of dto.execucoes) {
+            if (execucao.data > vencimento) {
+              throw new AppError('Execução com data após o vencimento do ciclo', 400);
+            }
+          }
+        }
       }
     }
 
     const tarefa = await tarefaRepository.create({
       ...dto,
       pontos: dto.pontos ?? 0,
+      cicloIteracao: cicloRevezamento?.iteracao,
     });
+
+    if (dto.responsavelAtualId && dto.responsavelAtualId !== dto.criadoPorId) {
+      const membroResponsavel = await familyRepository.findMembroById(dto.responsavelAtualId);
+      if (membroResponsavel?.usuario) {
+        await notificationService.criar({
+          usuarioId: membroResponsavel.usuario.id,
+          tipo: NotificacaoTipo.TAREFA_ATRIBUIDA,
+          titulo: 'Nova tarefa atribuída',
+          mensagem: `Você foi designado(a) para a tarefa "${tarefa.titulo}"`,
+          dados: JSON.stringify({ tarefaId: tarefa.id }),
+        });
+      }
+    }
 
     return transformResponsavel(tarefa);
   }
@@ -68,15 +110,42 @@ export class TarefaService {
 
     await tarefaRepository.atualizarExecucoesAtrasadas(familiaId);
 
+    const filtro = options.filtro ? { ...options.filtro } : {};
+
+    if (!filtro.cicloId) {
+      const cicloAtivo = await cicloRepository.findCicloAtivo(familiaId);
+      if (cicloAtivo) {
+        filtro.cicloId = [cicloAtivo.id, 'null'];
+      } else {
+        filtro.cicloId = 'null';
+      }
+    }
+
+    if (filtro.dependente !== undefined) {
+      const isDependente = filtro.dependente === 'true';
+      delete filtro.dependente;
+
+      const membros = await familyRepository.findMembrosByFamilia(familiaId);
+      const ids = membros
+        .filter((m: any) => m.dependente === isDependente)
+        .map((m: any) => m.id);
+
+      if (ids.length > 0) {
+        filtro.responsavelAtualId = ids.length === 1 ? ids[0] : ids;
+      } else {
+        filtro.responsavelAtualId = 'none';
+      }
+    }
+
     const { data, total } = await tarefaRepository.findByFamiliaWithFilters(
       familiaId,
-      { filtro: options.filtro, ordenacao: options.ordenacao, pagina: options.pagina, porPagina: options.porPagina },
+      { filtro, ordenacao: options.ordenacao, pagina: options.pagina, porPagina: options.porPagina },
     );
 
     const ultimaPagina = Math.ceil(total / options.porPagina);
 
     return {
-      filtro: options.filtro ?? {},
+      filtro,
       ordenacao: options.ordenacao ?? [{ coluna: 'criadoEm', direcao: 'desc' }],
       paginacao: {
         total: ultimaPagina,

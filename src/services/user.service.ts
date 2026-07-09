@@ -9,21 +9,21 @@ export class UserService {
       throw new AppError('Usuário não encontrado', 404);
     }
 
+    const membro = await authRepository.findUserFamilyProfile(usuarioId);
+
     const perfil: any = {
-      id: usuario.id,
+      id: membro?.id ?? usuario.id,
+      usuarioId: usuario.id,
       nome: usuario.nome,
       email: usuario.email,
       celular: usuario.celular ?? null,
       genero: usuario.genero,
       fotoPerfil: usuario.fotoPerfil ?? generateAvatar(usuario.nome, usuario.genero),
-      familiaId: null,
+      familiaId: membro?.familiaId ?? null,
     };
-
-    const membro = await authRepository.findUserFamilyProfile(usuarioId);
 
     if (membro?.usuario && membro.familia) {
       perfil.permissao = membro.permissao;
-      perfil.familiaId = membro.familiaId;
       perfil.familia = membro.familia.nome;
       perfil.totalMembros = membro.familia._count.membros;
     }

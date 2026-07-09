@@ -1,7 +1,16 @@
 import prisma from '../config/database';
 
 export const cicloRepository = {
-  create(data: { familiaId: string; nome: string; descricao?: string; duracaoDias: number; ativo?: boolean }) {
+  create(data: {
+    familiaId: string;
+    nome: string;
+    descricao?: string;
+    duracaoDias: number;
+    ativo?: boolean;
+    participantes?: string[];
+    renovacaoAutomatica?: boolean;
+    revezamentoAutomatico?: boolean;
+  }) {
     return prisma.ciclo.create({ data });
   },
 
@@ -38,11 +47,35 @@ export const cicloRepository = {
       ativo: boolean;
       inicio: Date;
       ultimaRotacao: Date | null;
+      renovadoEm: Date | null;
+      participantes: string[];
+      renovacaoAutomatica: boolean;
+      revezamentoAutomatico: boolean;
       criadoEm: Date;
       atualizadoEm: Date;
     }>>(
       `SELECT * FROM ciclos WHERE "familiaId" = $1 AND ativo = true AND "inicio" + ("duracaoDias"::text || ' days')::interval <= NOW()`,
       familiaId,
+    );
+  },
+
+  findCiclosVencidosGlobally() {
+    return prisma.$queryRawUnsafe<Array<{
+      id: string;
+      familiaId: string;
+      nome: string;
+      duracaoDias: number;
+      ativo: boolean;
+      inicio: Date;
+      ultimaRotacao: Date | null;
+      renovadoEm: Date | null;
+      participantes: string[];
+      renovacaoAutomatica: boolean;
+      revezamentoAutomatico: boolean;
+      criadoEm: Date;
+      atualizadoEm: Date;
+    }>>(
+      `SELECT * FROM ciclos WHERE ativo = true AND "inicio" + ("duracaoDias"::text || ' days')::interval <= NOW()`,
     );
   },
 
@@ -53,6 +86,11 @@ export const cicloRepository = {
     ativo?: boolean;
     inicio?: Date;
     ultimaRotacao?: Date | null;
+    renovadoEm?: Date | null;
+    participantes?: string[];
+    renovacaoAutomatica?: boolean;
+    revezamentoAutomatico?: boolean;
+    iteracao?: number;
   }) {
     return prisma.ciclo.update({ where: { id }, data });
   },

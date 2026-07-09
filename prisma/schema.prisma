@@ -31,6 +31,7 @@ enum NotificacaoTipo {
   CONVITE_FAMILIA
   CICLO_VENCIDO
   EXECUCAO_TAREFA
+  TAREFA_ATRIBUIDA
 }
 
 enum TipoTarefa {
@@ -131,18 +132,23 @@ model Notificacao {
 }
 
 model Ciclo {
-  id            String    @id @default(cuid())
-  familiaId     String
-  nome          String
-  descricao     String?
-  duracaoDias   Int
-  ativo         Boolean   @default(true)
-  inicio        DateTime  @default(now())
-  ultimaRotacao DateTime?
-  criadoEm      DateTime  @default(now())
-  atualizadoEm  DateTime  @updatedAt
-  familia       Familia   @relation(fields: [familiaId], references: [id], onDelete: Cascade)
-  tarefas       Tarefa[]
+  id                   String    @id @default(cuid())
+  familiaId            String
+  nome                 String
+  descricao            String?
+  duracaoDias          Int
+  ativo                Boolean   @default(true)
+  inicio               DateTime  @default(now())
+  ultimaRotacao        DateTime?
+  renovadoEm           DateTime?
+  participantes        String[]  @default([])
+  renovacaoAutomatica  Boolean   @default(false)
+  revezamentoAutomatico Boolean  @default(false)
+  iteracao             Int       @default(0)
+  criadoEm             DateTime  @default(now())
+  atualizadoEm         DateTime  @updatedAt
+  familia              Familia   @relation(fields: [familiaId], references: [id], onDelete: Cascade)
+  tarefas              Tarefa[]
 
   @@map("ciclos")
 }
@@ -174,6 +180,7 @@ model Tarefa {
   pontos             Int               @default(0)
   ativo              Boolean           @default(true)
   criadoPorId        String
+  cicloIteracao      Int?
   criadoEm           DateTime          @default(now())
   atualizadoEm       DateTime          @updatedAt
   familia            Familia           @relation(fields: [familiaId], references: [id], onDelete: Cascade)

@@ -18,6 +18,7 @@ jest.mock('../repositories/family.repository', () => ({
   familyRepository: {
     findFamiliaById: jest.fn(),
     findMembrosAtivosByFamilia: jest.fn(),
+    findMembrosByIds: jest.fn(),
   },
 }));
 
@@ -58,6 +59,9 @@ function makeCiclo(overrides = {}) {
     ativo: true,
     inicio: data,
     ultimaRotacao: null,
+    participantes: [],
+    renovacaoAutomatica: false,
+    revezamentoAutomatico: false,
     criadoEm: new Date(),
     atualizadoEm: new Date(),
     ...overrides,
@@ -240,7 +244,7 @@ describe('CicloService', () => {
 
   describe('rotacionar', () => {
     it('deve rotacionar tarefas em round-robin', async () => {
-      const ciclo = makeCiclo();
+      const ciclo = makeCiclo({ iteracao: 0 });
       cicloRepository.findById.mockResolvedValue(ciclo);
       tarefaRepository.findRevezamentoByCiclo.mockResolvedValue([
         { id: 't1', titulo: 'Lavar louça', responsavelAtualId: 'm1' },
@@ -255,14 +259,14 @@ describe('CicloService', () => {
         .mockResolvedValueOnce({ id: 't1', titulo: 'Lavar louça', responsavelAtualId: 'm1' })
         .mockResolvedValueOnce({ id: 't2', titulo: 'Varrer', responsavelAtualId: 'm2' })
         .mockResolvedValueOnce({ id: 't3', titulo: 'Cuidar plantas', responsavelAtualId: 'm1' });
-      cicloRepository.findById.mockResolvedValue(makeCiclo({ ultimaRotacao: new Date() }));
+      cicloRepository.findById.mockResolvedValue(makeCiclo({ ultimaRotacao: new Date(), iteracao: 0 }));
 
       const resultado = await service.rotacionar('fam-id', 'ciclo-id');
 
       expect(tarefaRepository.updateResponsavel).toHaveBeenCalledTimes(3);
-      expect(tarefaRepository.updateResponsavel).toHaveBeenNthCalledWith(1, 't1', 'm1');
-      expect(tarefaRepository.updateResponsavel).toHaveBeenNthCalledWith(2, 't2', 'm2');
-      expect(tarefaRepository.updateResponsavel).toHaveBeenNthCalledWith(3, 't3', 'm1');
+      expect(tarefaRepository.updateResponsavel).toHaveBeenNthCalledWith(1, 't1', 'm1', 1);
+      expect(tarefaRepository.updateResponsavel).toHaveBeenNthCalledWith(2, 't2', 'm2', 1);
+      expect(tarefaRepository.updateResponsavel).toHaveBeenNthCalledWith(3, 't3', 'm1', 1);
       expect(resultado.message).toBe('Tarefas rotacionadas com sucesso');
       expect(resultado.tarefas).toHaveLength(3);
     });

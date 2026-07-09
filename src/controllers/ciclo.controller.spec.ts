@@ -15,6 +15,7 @@ jest.mock('../repositories/family.repository', () => ({
   familyRepository: {
     findFamiliaById: jest.fn(),
     findMembrosAtivosByFamilia: jest.fn(),
+    findMembrosByIds: jest.fn(),
   },
 }));
 
@@ -72,6 +73,9 @@ function makeCiclo(overrides = {}) {
     ativo: true,
     inicio: data,
     ultimaRotacao: null,
+    participantes: [],
+    renovacaoAutomatica: false,
+    revezamentoAutomatico: false,
     criadoEm: new Date(),
     atualizadoEm: new Date(),
     ...overrides,

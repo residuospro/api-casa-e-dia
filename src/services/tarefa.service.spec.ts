@@ -22,11 +22,26 @@ jest.mock('../repositories/tarefa.repository', () => ({
 jest.mock('../repositories/family.repository', () => ({
   familyRepository: {
     findFamiliaById: jest.fn(),
+    findMembroById: jest.fn(),
+    findMembrosByFamilia: jest.fn(),
+  },
+}));
+
+jest.mock('../repositories/ciclo.repository', () => ({
+  cicloRepository: {
+    findCicloAtivo: jest.fn(),
+  },
+}));
+
+jest.mock('./notification.service', () => ({
+  notificationService: {
+    criar: jest.fn(),
   },
 }));
 
 const { tarefaRepository } = jest.requireMock('../repositories/tarefa.repository');
 const { familyRepository } = jest.requireMock('../repositories/family.repository');
+const { cicloRepository } = jest.requireMock('../repositories/ciclo.repository');
 
 function makeTarefa(overrides = {}) {
   return {
@@ -69,6 +84,13 @@ function makeExecucao(overrides = {}) {
 
 const service = new TarefaService();
 
+function mockMembroResponsavel() {
+  (familyRepository.findMembroById as jest.Mock).mockResolvedValue({
+    id: 'membro-id',
+    usuario: { id: 'usuario-id' },
+  });
+}
+
 describe('TarefaService', () => {
   afterEach(() => {
     jest.clearAllMocks();
@@ -78,6 +100,7 @@ describe('TarefaService', () => {
     it('deve criar tarefa familiar fixa com responsável', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id', nome: 'Família Teste' });
       tarefaRepository.create.mockResolvedValue(makeTarefa());
+      mockMembroResponsavel();
 
       const resultado = await service.criar({
         familiaId: 'fam-id',
@@ -106,6 +129,7 @@ describe('TarefaService', () => {
     it('deve criar tarefa com execuções', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id', nome: 'Família Teste' });
       tarefaRepository.create.mockResolvedValue(makeTarefa());
+      mockMembroResponsavel();
 
       const resultado = await service.criar({
         familiaId: 'fam-id',
@@ -142,6 +166,7 @@ describe('TarefaService', () => {
     it('deve criar tarefa pessoal com responsável', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id', nome: 'Família Teste' });
       tarefaRepository.create.mockResolvedValue(makeTarefa({ tipo: 'PESSOAL', titulo: 'Estudar inglês' }));
+      mockMembroResponsavel();
 
       const resultado = await service.criar({
         familiaId: 'fam-id',
@@ -199,6 +224,21 @@ describe('TarefaService', () => {
         }),
       ).rejects.toThrow(AppError);
     });
+
+    it('deve lançar erro se tarefa de revezamento não tiver ciclo', async () => {
+      familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id', nome: 'Família Teste' });
+
+      await expect(
+        service.criar({
+          familiaId: 'fam-id',
+          titulo: 'Teste',
+          tipo: TipoTarefa.FAMILIAR,
+          categoria: Categoria.OUTROS,
+          modoDistribuicao: ModoDistribuicao.REVEZAMENTO,
+          criadoPorId: 'criador-id',
+        }),
+      ).rejects.toThrow(AppError);
+    });
   });
 
   describe('listar', () => {
@@ -209,6 +249,7 @@ describe('TarefaService', () => {
         data: [makeTarefa()],
         total: 1,
       });
+      cicloRepository.findCicloAtivo.mockResolvedValue(null);
 
       const resultado = await service.listar('fam-id', {
         filtro: { tipo: 'FAMILIAR' },
@@ -221,7 +262,7 @@ describe('TarefaService', () => {
 
       expect(tarefaRepository.atualizarExecucoesAtrasadas).toHaveBeenCalledWith('fam-id');
       expect(tarefaRepository.findByFamiliaWithFilters).toHaveBeenCalledWith('fam-id', {
-        filtro: { tipo: 'FAMILIAR' },
+        filtro: { tipo: 'FAMILIAR', cicloId: 'null' },
         ordenacao: [{ coluna: 'titulo', direcao: 'asc' }],
         pagina: 1,
         porPagina: 10,
@@ -231,7 +272,7 @@ describe('TarefaService', () => {
       expect(resultado.paginacao.por_pagina).toBe(10);
       expect(resultado.paginacao.ultima_pagina).toBe(1);
       expect(resultado.data).toHaveLength(1);
-      expect(resultado.filtro).toEqual({ tipo: 'FAMILIAR' });
+      expect(resultado.filtro).toEqual({ tipo: 'FAMILIAR', cicloId: 'null' });
     });
 
     it('deve usar padrões quando nenhum filtro fornecido', async () => {
@@ -241,6 +282,7 @@ describe('TarefaService', () => {
         data: [makeTarefa()],
         total: 1,
       });
+      cicloRepository.findCicloAtivo.mockResolvedValue(null);
 
       const resultado = await service.listar('fam-id', {
         pagina: 1,
@@ -249,11 +291,71 @@ describe('TarefaService', () => {
         porPaginaResposta: 10,
       });
 
-      expect(resultado.filtro).toEqual({});
+      expect(resultado.filtro).toEqual({ cicloId: 'null' });
       expect(resultado.ordenacao).toEqual([{ coluna: 'criadoEm', direcao: 'desc' }]);
     });
 
-    it('deve lançar erro se família não existir', async () => {
+    it('deve filtrar tarefas por dependente', async () => {
+      familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id' });
+      tarefaRepository.atualizarExecucoesAtrasadas.mockResolvedValue({ count: 0 });
+      tarefaRepository.findByFamiliaWithFilters.mockResolvedValue({
+        data: [makeTarefa()],
+        total: 1,
+      });
+      cicloRepository.findCicloAtivo.mockResolvedValue(null);
+      familyRepository.findMembrosByFamilia.mockResolvedValue([
+        { id: 'm1', dependente: false },
+        { id: 'm2', dependente: true },
+        { id: 'm3', dependente: true },
+      ]);
+
+      const resultado = await service.listar('fam-id', {
+        filtro: { dependente: 'true' },
+        pagina: 1,
+        porPagina: 10,
+        paginaResposta: 1,
+        porPaginaResposta: 10,
+      });
+
+      expect(tarefaRepository.findByFamiliaWithFilters).toHaveBeenCalledWith('fam-id', {
+        filtro: { responsavelAtualId: ['m2', 'm3'], cicloId: 'null' },
+        ordenacao: undefined,
+        pagina: 1,
+        porPagina: 10,
+      });
+      expect(resultado.filtro).toEqual({ responsavelAtualId: ['m2', 'm3'], cicloId: 'null' });
+    });
+
+    it('deve filtrar tarefas por nao dependente', async () => {
+      familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id' });
+      tarefaRepository.atualizarExecucoesAtrasadas.mockResolvedValue({ count: 0 });
+      tarefaRepository.findByFamiliaWithFilters.mockResolvedValue({
+        data: [makeTarefa()],
+        total: 1,
+      });
+      cicloRepository.findCicloAtivo.mockResolvedValue(null);
+      familyRepository.findMembrosByFamilia.mockResolvedValue([
+        { id: 'm1', dependente: false },
+        { id: 'm2', dependente: true },
+      ]);
+
+      const resultado = await service.listar('fam-id', {
+        filtro: { dependente: 'false' },
+        pagina: 1,
+        porPagina: 10,
+        paginaResposta: 1,
+        porPaginaResposta: 10,
+      });
+
+      expect(tarefaRepository.findByFamiliaWithFilters).toHaveBeenCalledWith('fam-id', {
+        filtro: { responsavelAtualId: 'm1', cicloId: 'null' },
+        ordenacao: undefined,
+        pagina: 1,
+        porPagina: 10,
+      });
+    });
+
+    it('deve lancar erro se familia nao existir', async () => {
       familyRepository.findFamiliaById.mockResolvedValue(null);
 
       await expect(

@@ -8,6 +8,7 @@ import { errorMiddleware } from './middlewares/error.middleware';
 import { env } from './config/env';
 import { initSocket } from './socket';
 import { initScheduler } from './scheduler';
+import { initCycleScheduler } from './scheduler/cycle';
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use(errorMiddleware);
 const httpServer = http.createServer(app);
 initSocket(httpServer);
 initScheduler();
+initCycleScheduler();
 
 httpServer.listen(env.port, () => {
   console.log(`Servidor rodando na porta ${env.port}`);

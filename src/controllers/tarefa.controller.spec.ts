@@ -12,11 +12,24 @@ jest.mock('../middlewares/auth.middleware', () => ({
   }),
 }));
 
+jest.mock('../services/notification.service', () => ({
+  notificationService: {
+    criar: jest.fn(),
+  },
+}));
+
 jest.mock('../repositories/family.repository', () => ({
   familyRepository: {
     findFamiliaById: jest.fn(),
     findMembroByUsuarioAndFamilia: jest.fn(),
     findMembrosByFamilia: jest.fn(),
+    findMembroById: jest.fn(),
+  },
+}));
+
+jest.mock('../repositories/ciclo.repository', () => ({
+  cicloRepository: {
+    findCicloAtivo: jest.fn(),
   },
 }));
 
@@ -39,6 +52,7 @@ jest.mock('../repositories/tarefa.repository', () => ({
 
 const { familyRepository } = jest.requireMock('../repositories/family.repository');
 const { tarefaRepository } = jest.requireMock('../repositories/tarefa.repository');
+const { cicloRepository } = jest.requireMock('../repositories/ciclo.repository');
 
 const app = express();
 app.use(cors());
@@ -96,6 +110,7 @@ describe('TarefaController (integração)', () => {
     it('deve criar tarefa com dados válidos', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id', nome: 'Família Teste' });
       familyRepository.findMembroByUsuarioAndFamilia.mockResolvedValue({ id: 'criador-id' });
+      familyRepository.findMembroById.mockResolvedValue({ id: 'membro-id', usuario: { id: 'usuario-id' } });
       tarefaRepository.create.mockResolvedValue(makeTarefa());
 
       const response = await request(app)
@@ -131,6 +146,7 @@ describe('TarefaController (integração)', () => {
         data: [makeTarefa()],
         total: 1,
       });
+      cicloRepository.findCicloAtivo.mockResolvedValue(null);
 
       const response = await request(app).get('/families/fam-id/tarefas');
 
@@ -151,6 +167,7 @@ describe('TarefaController (integração)', () => {
         data: [makeTarefa()],
         total: 1,
       });
+      cicloRepository.findCicloAtivo.mockResolvedValue(null);
 
       const response = await request(app)
         .get('/families/fam-id/tarefas')
@@ -168,6 +185,7 @@ describe('TarefaController (integração)', () => {
         data: [],
         total: 0,
       });
+      cicloRepository.findCicloAtivo.mockResolvedValue(null);
 
       const response = await request(app)
         .get('/families/fam-id/tarefas')

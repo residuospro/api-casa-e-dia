@@ -7,6 +7,11 @@ export interface Ciclo {
   ativo: boolean;
   inicio: Date;
   ultimaRotacao: Date | null;
+  renovadoEm: Date | null;
+  participantes: string[];
+  renovacaoAutomatica: boolean;
+  revezamentoAutomatico: boolean;
+  iteracao: number;
   criadoEm: Date;
   atualizadoEm: Date;
 }
@@ -17,6 +22,9 @@ export interface CriarCicloDTO {
   descricao?: string;
   duracaoDias: number;
   ativo?: boolean;
+  participantes?: string[];
+  renovacaoAutomatica?: boolean;
+  revezamentoAutomatico?: boolean;
 }
 
 export interface AtualizarCicloDTO {
@@ -25,4 +33,7 @@ export interface AtualizarCicloDTO {
   duracaoDias?: number;
   ativo?: boolean;
   inicio?: string;
+  participantes?: string[];
+  renovacaoAutomatica?: boolean;
+  revezamentoAutomatico?: boolean;
 }
