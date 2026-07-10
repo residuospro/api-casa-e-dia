@@ -19,4 +19,32 @@ export enum Genero {
 
 export enum NotificacaoTipo {
   CONVITE_FAMILIA = 'CONVITE_FAMILIA',
+  CICLO_VENCIDO = 'CICLO_VENCIDO',
+  EXECUCAO_TAREFA = 'EXECUCAO_TAREFA',
+  TAREFA_ATRIBUIDA = 'TAREFA_ATRIBUIDA',
+}
+
+export enum TipoTarefa {
+  PESSOAL = 'PESSOAL',
+  FAMILIAR = 'FAMILIAR',
+}
+
+export enum Categoria {
+  CASA = 'CASA',
+  ESTUDO = 'ESTUDO',
+  SAUDE = 'SAUDE',
+  FINANCEIRO = 'FINANCEIRO',
+  OUTROS = 'OUTROS',
+}
+
+export enum ModoDistribuicao {
+  FIXA = 'FIXA',
+  REVEZAMENTO = 'REVEZAMENTO',
+}
+
+export enum StatusExecucao {
+  AGENDADA = 'AGENDADA',
+  CONCLUIDA = 'CONCLUIDA',
+  ATRASADA = 'ATRASADA',
+  CANCELADA = 'CANCELADA',
 }

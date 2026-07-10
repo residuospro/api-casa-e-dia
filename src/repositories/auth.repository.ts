@@ -31,6 +31,23 @@ export const authRepository = {
     return prisma.$transaction(fn);
   },
 
+  updateUsuario(
+    id: string,
+    data: {
+      nome?: string;
+      email?: string;
+      senha?: string;
+      fotoPerfil?: string;
+      genero?: string;
+      celular?: string;
+    },
+  ) {
+    return prisma.usuario.update({
+      where: { id },
+      data: data as any,
+    });
+  },
+
   findUserFamilyProfile(usuarioId: string) {
     return prisma.membroFamilia.findFirst({
       where: { usuarioId },

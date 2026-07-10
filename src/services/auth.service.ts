@@ -29,6 +29,17 @@ export type CadastrarInput = z.infer<typeof cadastrarSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type PrimeiroAcessoInput = z.infer<typeof primeiroAcessoSchema>;
 
+export const atualizarPerfilSchema = z.object({
+  nome: z.string().min(1, 'Nome é obrigatório').optional(),
+  email: z.string().email('Email inválido').optional(),
+  senha: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres').optional(),
+  celular: z.string().optional(),
+  genero: z.enum(['MASCULINO', 'FEMININO', 'OUTRO']).optional(),
+  fotoPerfil: z.string().optional(),
+  tipoPessoa: z.string().optional(),
+  familiaId: z.string().optional(),
+});
+
 export class AuthService {
   async cadastrar(dto: CadastrarInput) {
     const existente = await authRepository.findUsuarioByEmail(dto.email);
@@ -101,6 +112,54 @@ export class AuthService {
         celular: usuario.celular ?? null,
         fotoPerfil: usuario.fotoPerfil ?? generateAvatar(usuario.nome, usuario.genero),
         genero: usuario.genero,
+      },
+    };
+  }
+
+  async atualizarPerfil(
+    usuarioId: string,
+    dto: z.infer<typeof atualizarPerfilSchema> & { familiaId?: string },
+  ) {
+    if (dto.email) {
+      const existente = await authRepository.findUsuarioByEmail(dto.email);
+      if (existente && existente.id !== usuarioId) {
+        throw new AppError('Email já cadastrado', 409);
+      }
+    }
+
+    const usuarioData: Record<string, unknown> = {};
+    if (dto.nome !== undefined) usuarioData.nome = dto.nome;
+    if (dto.email !== undefined) usuarioData.email = dto.email;
+    if (dto.celular !== undefined) usuarioData.celular = dto.celular;
+    if (dto.genero !== undefined) usuarioData.genero = dto.genero;
+    if (dto.fotoPerfil !== undefined) usuarioData.fotoPerfil = dto.fotoPerfil;
+    if (dto.senha) usuarioData.senha = await bcrypt.hash(dto.senha, 10);
+
+    if (Object.keys(usuarioData).length > 0) {
+      await authRepository.updateUsuario(usuarioId, usuarioData as any);
+    }
+
+    if (dto.tipoPessoa) {
+      if (!dto.familiaId) {
+        throw new AppError('familiaId é obrigatório para alterar tipoPessoa', 400);
+      }
+      const membro = await familyRepository.findMembroByUsuarioAndFamilia(usuarioId, dto.familiaId);
+      if (!membro) {
+        throw new AppError('Membro não encontrado nesta família', 404);
+      }
+      await familyRepository.updateMembro(membro.id, { tipoPessoa: dto.tipoPessoa });
+    }
+
+    const usuario = await authRepository.findUsuarioById(usuarioId);
+
+    return {
+      usuario: {
+        id: usuario!.id,
+        nome: usuario!.nome,
+        email: usuario!.email,
+        celular: usuario!.celular ?? null,
+        fotoPerfil: usuario!.fotoPerfil ?? generateAvatar(usuario!.nome, usuario!.genero),
+        genero: usuario!.genero,
       },
     };
   }
