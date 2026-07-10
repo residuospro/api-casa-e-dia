@@ -1,5 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
-import { authService, cadastrarSchema, loginSchema, primeiroAcessoSchema, atualizarPerfilSchema } from '../services/auth.service';
+import {
+  authService,
+  cadastrarSchema,
+  loginSchema,
+  primeiroAcessoSchema,
+  atualizarPerfilSchema,
+} from '../services/auth.service';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { ZodError } from 'zod';
 import multer from 'multer';

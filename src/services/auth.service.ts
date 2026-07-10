@@ -37,6 +37,7 @@ export const atualizarPerfilSchema = z.object({
   genero: z.enum(['MASCULINO', 'FEMININO', 'OUTRO']).optional(),
   fotoPerfil: z.string().optional(),
   tipoPessoa: z.string().optional(),
+  familiaId: z.string().optional(),
 });
 
 export class AuthService {
