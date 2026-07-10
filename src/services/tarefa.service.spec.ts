@@ -156,12 +156,12 @@ describe('TarefaService', () => {
         criadoPorId: 'criador-id',
         pontos: 10,
         execucoes: [
-          { data: new Date('2026-07-01T18:00:00'), status: 'AGENDADA', pontosObtidos: null },
-          { data: new Date('2026-07-02T18:00:00'), status: 'AGENDADA', pontosObtidos: null },
-        ],
-      });
-      expect(resultado.titulo).toBe('Lavar louça');
-    });
+           { data: new Date('2026-07-01T18:00:00'), status: 'AGENDADA', pontosObtidos: null, iteracao: null },
+           { data: new Date('2026-07-02T18:00:00'), status: 'AGENDADA', pontosObtidos: null, iteracao: null },
+         ],
+       });
+       expect(resultado.titulo).toBe('Lavar louça');
+     });
 
     it('deve criar tarefa pessoal com responsável', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id', nome: 'Família Teste' });

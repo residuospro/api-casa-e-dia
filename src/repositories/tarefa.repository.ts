@@ -16,7 +16,7 @@ const responsavelAtualInclude = {
 
 const tarefaInclude = {
   execucoes: { orderBy: { data: 'asc' as const } },
-  ciclo: { select: { id: true, nome: true } },
+  ciclo: { select: { id: true, nome: true, iteracao: true } },
   responsavelAtual: responsavelAtualInclude,
   criadoPor: {
     select: { id: true, nome: true, fotoPerfil: true },
@@ -53,6 +53,7 @@ export const tarefaRepository = {
                 data: new Date(e.data),
                 status: e.status,
                 pontosObtidos: e.pontosObtidos,
+                ...(e.iteracao !== undefined ? { iteracao: e.iteracao } : {}),
               })),
             }
           : undefined,
@@ -190,27 +191,56 @@ export const tarefaRepository = {
     return { data, total };
   },
 
-  update(id: string, data: AtualizarTarefaDTO) {
+  async update(id: string, data: AtualizarTarefaDTO) {
     const { execucoes, ...tarefaData } = data;
 
     const updateData = cleanUpdateData(tarefaData as unknown as Record<string, unknown>);
 
-    if (execucoes) {
-      updateData.execucoes = {
-        deleteMany: {},
-        create: execucoes.map((e) => ({
-          data: new Date(e.data),
-          status: e.status ?? StatusExecucao.AGENDADA,
-          pontosObtidos: e.pontosObtidos ?? null,
-        })),
-      };
-    }
-
-    return prisma.tarefa.update({
+    await prisma.tarefa.update({
       where: { id },
       data: updateData,
-      include: tarefaInclude,
     });
+
+    if (execucoes) {
+      const idsNoDto = execucoes.filter((e) => e.id).map((e) => e.id!);
+
+      if (idsNoDto.length > 0) {
+        await prisma.execucaoTarefa.deleteMany({
+          where: { tarefaId: id, id: { notIn: idsNoDto } },
+        });
+      } else {
+        await prisma.execucaoTarefa.deleteMany({ where: { tarefaId: id } });
+      }
+
+      for (const exec of execucoes) {
+        if (exec.id) {
+          await prisma.execucaoTarefa.update({
+            where: { id: exec.id },
+            data: {
+              data: new Date(exec.data),
+              ...(exec.status !== undefined ? { status: exec.status as any } : {}),
+              ...(exec.pontosObtidos !== undefined ? { pontosObtidos: exec.pontosObtidos } : {}),
+              ...(exec.iteracao !== undefined ? { iteracao: exec.iteracao } : {}),
+            },
+          });
+        } else {
+          await prisma.execucaoTarefa.create({
+            data: {
+              tarefaId: id,
+              data: new Date(exec.data),
+              status: (exec.status ?? StatusExecucao.AGENDADA) as any,
+              pontosObtidos: exec.pontosObtidos ?? null,
+              ...(exec.iteracao !== undefined ? { iteracao: exec.iteracao } : {}),
+            },
+          });
+        }
+      }
+    }
+
+    return prisma.tarefa.findUnique({
+      where: { id },
+      include: tarefaInclude,
+    })!;
   },
 
   delete(id: string) {
@@ -224,8 +254,26 @@ export const tarefaRepository = {
         modoDistribuicao: 'REVEZAMENTO',
         ativo: true,
       },
-      select: { id: true, titulo: true, responsavelAtualId: true },
+      select: { id: true, titulo: true, responsavelAtualId: true, cicloIteracao: true },
     });
+  },
+
+  findExecucoesByTarefa(tarefaId: string) {
+    return prisma.execucaoTarefa.findMany({
+      where: { tarefaId },
+      orderBy: { data: 'asc' },
+    });
+  },
+
+  createExecucoes(tarefaId: string, execucoes: { data: Date; status: string; iteracao?: number | null }[]) {
+    return prisma.execucaoTarefa.createMany({
+      data: execucoes.map((e) => ({
+        tarefaId,
+        data: e.data,
+        status: e.status as any,
+        ...(e.iteracao !== undefined ? { iteracao: e.iteracao } : {}),
+      })),
+    } as any);
   },
 
   updateResponsavel(tarefaId: string, membroId: string, cicloIteracao?: number) {
@@ -313,6 +361,45 @@ export const tarefaRepository = {
     });
   },
 
+  findUrgentesByFamilia(familiaId: string) {
+    const hoje = new Date();
+    const inicioDoDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    const fimDoDia = new Date(inicioDoDia.getTime() + 24 * 60 * 60 * 1000);
+
+    return prisma.tarefa.findMany({
+      where: {
+        familiaId,
+        ativo: true,
+        execucoes: {
+          some: {
+            OR: [
+              { status: 'ATRASADA' },
+              { status: 'AGENDADA', data: { gte: inicioDoDia, lt: fimDoDia } },
+            ],
+          },
+        },
+      },
+      include: {
+        execucoes: {
+          where: {
+            OR: [
+              { status: 'ATRASADA' },
+              { status: 'AGENDADA', data: { gte: inicioDoDia, lt: fimDoDia } },
+            ],
+          },
+          orderBy: { data: 'asc' },
+        },
+        ciclo: { select: { id: true, nome: true, iteracao: true } },
+        responsavelAtual: responsavelAtualInclude,
+        criadoPor: {
+          select: { id: true, nome: true, fotoPerfil: true },
+        },
+      },
+      take: 4,
+      orderBy: { criadoEm: 'desc' },
+    });
+  },
+
   countByFamilia(familiaId: string) {
     return prisma.tarefa.count({
       where: { familiaId, ativo: true },
@@ -325,6 +412,15 @@ export const tarefaRepository = {
         familiaId,
         ativo: true,
         execucoes: { some: { status } },
+      },
+    });
+  },
+
+  countExecucoesByFamiliaAndStatus(familiaId: string, status: StatusExecucao) {
+    return prisma.execucaoTarefa.count({
+      where: {
+        status,
+        tarefa: { familiaId, ativo: true },
       },
     });
   },

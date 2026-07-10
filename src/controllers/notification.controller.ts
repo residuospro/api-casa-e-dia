@@ -49,4 +49,13 @@ export const notificationController = {
       next(err);
     }
   },
+
+  async excluirTodas(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const resultado = await notificationService.excluirTodas(req.usuario!.id);
+      res.json(resultado);
+    } catch (err) {
+      next(err);
+    }
+  },
 };

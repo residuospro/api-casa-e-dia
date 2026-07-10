@@ -3,6 +3,7 @@ import { tarefaRepository } from '../repositories/tarefa.repository';
 import { familyRepository } from '../repositories/family.repository';
 import { notificationService } from './notification.service';
 import { NotificacaoTipo } from '../models/enums';
+import { renovarExecucoesTarefa } from './tarefa.service';
 
 function getUsuarios(membros: { id: string; usuarioId: string | null; nome: string | null }[]) {
   return membros.filter((m) => m.usuarioId).map((m) => m.usuarioId!);
@@ -32,15 +33,16 @@ export class CycleSchedulerService {
     id: string;
     familiaId: string;
     nome: string;
+    duracaoDias: number;
     participantes: string[];
     revezamentoAutomatico: boolean;
   }): Promise<void> {
     const agora = new Date();
 
     await cicloRepository.update(ciclo.id, {
-      inicio: agora,
-      ultimaRotacao: agora,
       renovadoEm: agora,
+      proximaRenovacao: new Date(agora.getTime() + ciclo.duracaoDias * 24 * 60 * 60 * 1000),
+      expirado: false,
     });
 
     if (ciclo.revezamentoAutomatico) {
@@ -88,13 +90,22 @@ export class CycleSchedulerService {
     membros.sort((a, b) => a.localeCompare(b));
 
     const updates = tarefas.map((tarefa, indice) => {
-      const membroId = membros[indice % membros.length];
+      const membroId = membros[(indice + proximaIteracao) % membros.length];
       return tarefaRepository.updateResponsavel(tarefa.id, membroId, proximaIteracao);
     });
 
     await Promise.all(updates);
 
     await cicloRepository.update(ciclo.id, { iteracao: proximaIteracao });
+
+    if (cicloAtual) {
+      const agora = new Date();
+      for (const tarefa of tarefas) {
+        if (tarefa.cicloIteracao != null) {
+          await renovarExecucoesTarefa(tarefa.id, proximaIteracao, agora, cicloAtual.duracaoDias);
+        }
+      }
+    }
 
     console.log(`[CycleScheduler] ${tarefas.length} tarefa(s) rotacionada(s) automaticamente`);
   }

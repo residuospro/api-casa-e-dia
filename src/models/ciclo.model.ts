@@ -6,12 +6,13 @@ export interface Ciclo {
   duracaoDias: number;
   ativo: boolean;
   inicio: Date;
-  ultimaRotacao: Date | null;
+  proximaRenovacao: Date | null;
   renovadoEm: Date | null;
   participantes: string[];
   renovacaoAutomatica: boolean;
   revezamentoAutomatico: boolean;
   iteracao: number;
+  expirado: boolean;
   criadoEm: Date;
   atualizadoEm: Date;
 }

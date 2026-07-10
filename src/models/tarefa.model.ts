@@ -26,6 +26,7 @@ export interface CriarExecucaoDTO {
   concluidoPorId?: string | null;
   concluidoEm?: Date | null;
   notificacaoCriada?: boolean;
+  iteracao?: number | null;
 }
 
 export interface CriarTarefaDTO {
@@ -44,9 +45,11 @@ export interface CriarTarefaDTO {
 }
 
 export interface AtualizarExecucaoDTO {
+  id?: string;
   data: Date | string;
   status?: StatusExecucao;
   pontosObtidos?: number | null;
+  iteracao?: number | null;
 }
 
 export interface AtualizarTarefaDTO {

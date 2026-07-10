@@ -10,6 +10,29 @@ import {
 } from '../models/tarefa.model';
 import { notificationService } from './notification.service';
 
+export async function renovarExecucoesTarefa(
+  tarefaId: string,
+  iteracao: number | null,
+  novoInicio: Date,
+  duracaoDias: number,
+) {
+  const execucoes = await tarefaRepository.findExecucoesByTarefa(tarefaId);
+
+  const naoCanceladas = execucoes.filter((e) => e.status !== 'CANCELADA');
+  const novas: { data: Date; status: string; iteracao?: number | null }[] = [];
+
+  if (naoCanceladas.length === 0) {
+    novas.push({ data: new Date(novoInicio), status: 'AGENDADA', iteracao });
+  } else {
+    for (const exec of naoCanceladas) {
+      const data = new Date(exec.data.getTime() + duracaoDias * 24 * 60 * 60 * 1000);
+      novas.push({ data, status: 'AGENDADA', iteracao });
+    }
+  }
+
+  await tarefaRepository.createExecucoes(tarefaId, novas);
+}
+
 function transformResponsavel(tarefa: any) {
   if (!tarefa.responsavelAtual) return tarefa;
   const r = tarefa.responsavelAtual;
@@ -70,10 +93,16 @@ export class TarefaService {
       }
     }
 
+    const execucoesComIteracao = dto.execucoes?.map((e) => ({
+      ...e,
+      iteracao: e.iteracao ?? cicloRevezamento?.iteracao ?? null,
+    }));
+
     const tarefa = await tarefaRepository.create({
       ...dto,
       pontos: dto.pontos ?? 0,
       cicloIteracao: cicloRevezamento?.iteracao,
+      execucoes: execucoesComIteracao ?? undefined,
     });
 
     if (dto.responsavelAtualId && dto.responsavelAtualId !== dto.criadoPorId) {
@@ -182,6 +211,18 @@ export class TarefaService {
       !dto.responsavelAtualId
     ) {
       throw new AppError('Tarefa fixa deve ter um responsável', 400);
+    }
+
+    if (dto.execucoes) {
+      const execucoesExistentes = await tarefaRepository.findExecucoesByTarefa(tarefaId);
+      const iteracaoPorId = new Map(execucoesExistentes.map((e: any) => [e.id, e.iteracao]));
+
+      dto.execucoes = dto.execucoes.map((e) => {
+        if (e.id && iteracaoPorId.has(e.id)) {
+          return { ...e, iteracao: e.iteracao ?? iteracaoPorId.get(e.id) ?? null };
+        }
+        return { ...e, iteracao: e.iteracao ?? tarefa.cicloIteracao ?? null };
+      });
     }
 
     const resultado = await tarefaRepository.update(tarefaId, dto);
@@ -336,13 +377,36 @@ export class TarefaService {
     });
   }
 
+  async urgentes(familiaId: string) {
+    const tarefas = await tarefaRepository.findUrgentesByFamilia(familiaId);
+
+    return tarefas.map((tarefa: any) => {
+      const hoje = new Date();
+      const inicioDoDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+      const fimDoDia = new Date(inicioDoDia.getTime() + 24 * 60 * 60 * 1000);
+
+      const venceHoje = tarefa.execucoes?.find(
+        (e: any) =>
+          e.status === 'AGENDADA' &&
+          e.data >= inicioDoDia &&
+          e.data < fimDoDia,
+      );
+      const atrasada = tarefa.execucoes?.find((e: any) => e.status === 'ATRASADA');
+
+      return transformResponsavel({
+        ...tarefa,
+        execucoes: venceHoje ? [venceHoje] : atrasada ? [atrasada] : [],
+      });
+    });
+  }
+
   async resumo(familiaId: string) {
     const totalTarefas = await tarefaRepository.countByFamilia(familiaId);
-    const tarefasConcluidas = await tarefaRepository.countByFamiliaAndExecucaoStatus(
+    const execucoesConcluidas = await tarefaRepository.countExecucoesByFamiliaAndStatus(
       familiaId,
       StatusExecucao.CONCLUIDA,
     );
-    const tarefasAtrasadas = await tarefaRepository.countByFamiliaAndExecucaoStatus(
+    const execucoesAtrasadas = await tarefaRepository.countExecucoesByFamiliaAndStatus(
       familiaId,
       StatusExecucao.ATRASADA,
     );
@@ -352,10 +416,11 @@ export class TarefaService {
     let ciclo = null;
 
     if (cicloAtivo) {
-      const fimCiclo = new Date(cicloAtivo.inicio);
-      fimCiclo.setDate(fimCiclo.getDate() + cicloAtivo.duracaoDias);
+      const referencia = cicloAtivo.proximaRenovacao
+        ? new Date(cicloAtivo.proximaRenovacao)
+        : new Date(cicloAtivo.inicio.getTime() + cicloAtivo.duracaoDias * 24 * 60 * 60 * 1000);
       const agora = new Date();
-      const diffMs = fimCiclo.getTime() - agora.getTime();
+      const diffMs = referencia.getTime() - agora.getTime();
       diasRestantes = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
 
       ciclo = {
@@ -368,8 +433,8 @@ export class TarefaService {
 
     return {
       totalTarefas,
-      tarefasConcluidas,
-      tarefasAtrasadas,
+      execucoesConcluidas,
+      execucoesAtrasadas,
       diasRestantes,
       ciclo,
     };

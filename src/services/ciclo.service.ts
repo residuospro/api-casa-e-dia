@@ -6,8 +6,23 @@ import { notificationService } from './notification.service';
 import { AppError } from './auth.service';
 import { CriarCicloDTO, AtualizarCicloDTO } from '../models/ciclo.model';
 import { NotificacaoTipo } from '../models/enums';
+import { renovarExecucoesTarefa } from './tarefa.service';
 
 export class CicloService {
+  private estaExpirado(ciclo: {
+    inicio: Date;
+    duracaoDias: number;
+    proximaRenovacao: Date | null;
+  }): boolean {
+    const agora = new Date();
+    if (ciclo.proximaRenovacao) {
+      return ciclo.proximaRenovacao <= agora;
+    }
+    const fim = new Date(ciclo.inicio);
+    fim.setDate(fim.getDate() + ciclo.duracaoDias);
+    return fim <= agora;
+  }
+
   async criar(dto: CriarCicloDTO) {
     const familia = await familyRepository.findFamiliaById(dto.familiaId);
     if (!familia) {
@@ -28,13 +43,29 @@ export class CicloService {
       throw new AppError('Família não encontrada', 404);
     }
 
-    return cicloRepository.findByFamilia(familiaId);
+    const ciclos = await cicloRepository.findByFamilia(familiaId);
+
+    for (const ciclo of ciclos) {
+      const expirado = this.estaExpirado(ciclo);
+      if (expirado && !ciclo.expirado) {
+        await cicloRepository.update(ciclo.id, { expirado: true });
+        ciclo.expirado = true;
+      }
+    }
+
+    return ciclos;
   }
 
   async obter(familiaId: string, cicloId: string) {
     const ciclo = await cicloRepository.findById(cicloId);
     if (!ciclo || ciclo.familiaId !== familiaId) {
       throw new AppError('Ciclo não encontrado', 404);
+    }
+
+    const expirado = this.estaExpirado(ciclo);
+    if (expirado && !ciclo.expirado) {
+      await cicloRepository.update(ciclo.id, { expirado: true });
+      ciclo.expirado = true;
     }
 
     return ciclo;
@@ -54,10 +85,14 @@ export class CicloService {
     }
 
     const { inicio, ...rest } = dto;
-    return cicloRepository.update(cicloId, {
-      ...rest,
-      ...(inicio ? { inicio: new Date(inicio) } : {}),
-    });
+    if (inicio) {
+      const dataInicio = new Date(inicio);
+      if (dataInicio < new Date()) {
+        throw new AppError('Data de início não pode ser no passado', 400);
+      }
+      return cicloRepository.update(cicloId, { ...rest, inicio: dataInicio });
+    }
+    return cicloRepository.update(cicloId, rest);
   }
 
   async remover(familiaId: string, cicloId: string) {
@@ -81,15 +116,15 @@ export class CicloService {
     }
 
     const agora = new Date();
-    const diasDesdeInicio = Math.floor(
-      (agora.getTime() - ciclo.inicio.getTime()) / (1000 * 60 * 60 * 24),
-    );
+    const vencimento = ciclo.proximaRenovacao
+      ? new Date(ciclo.proximaRenovacao)
+      : new Date(ciclo.inicio.getTime() + ciclo.duracaoDias * 24 * 60 * 60 * 1000);
 
-    if (diasDesdeInicio < ciclo.duracaoDias) {
-      throw new AppError(
-        `Ciclo ainda não venceu. Faltam ${ciclo.duracaoDias - diasDesdeInicio} dia(s)`,
-        400,
+    if (agora < vencimento) {
+      const diasRestantes = Math.ceil(
+        (vencimento.getTime() - agora.getTime()) / (1000 * 60 * 60 * 24),
       );
+      throw new AppError(`Ciclo ainda não venceu. Faltam ${diasRestantes} dia(s)`, 400);
     }
 
     const tarefas = await tarefaRepository.findRevezamentoByCiclo(cicloId);
@@ -110,20 +145,25 @@ export class CicloService {
 
     const proximaIteracao = ciclo.iteracao + 1;
 
-    membros.sort((a, b) => a.localeCompare(b));
+    membros = membros.sort((a, b) => a.localeCompare(b));
 
     const tarefasAtualizadas = tarefas.map((tarefa, indice) => {
-      const membroId = membros[indice % membros.length];
+      const membroId = membros[(indice + proximaIteracao) % membros.length];
       return tarefaRepository.updateResponsavel(tarefa.id, membroId, proximaIteracao);
     });
 
     const tarefasResultado = await Promise.all(tarefasAtualizadas);
 
     await cicloRepository.update(cicloId, {
-      inicio: agora,
-      ultimaRotacao: agora,
+      renovadoEm: agora,
+      proximaRenovacao: new Date(agora.getTime() + ciclo.duracaoDias * 24 * 60 * 60 * 1000),
       iteracao: proximaIteracao,
+      expirado: false,
     });
+
+    for (const tarefa of tarefas) {
+      await renovarExecucoesTarefa(tarefa.id, proximaIteracao, agora, ciclo.duracaoDias);
+    }
 
     const cicloAtualizado = await cicloRepository.findById(cicloId);
 
@@ -145,6 +185,15 @@ export class CicloService {
     }
 
     const ciclos = await cicloRepository.findCiclosAtivos(familiaId);
+
+    for (const ciclo of ciclos) {
+      const expirado = this.estaExpirado(ciclo);
+      if (expirado && !ciclo.expirado) {
+        await cicloRepository.update(ciclo.id, { expirado: true });
+        ciclo.expirado = true;
+      }
+    }
+
     return ciclos.map((c) => ({ text: c.nome, value: c.id }));
   }
 
@@ -209,7 +258,7 @@ export class CicloService {
         nome: c.nome,
         duracaoDias: c.duracaoDias,
         inicio: c.inicio,
-        ultimaRotacao: c.ultimaRotacao,
+        proximaRenovacao: c.proximaRenovacao,
       })),
     };
   }

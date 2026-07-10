@@ -65,4 +65,10 @@ export const notificationRepository = {
       where: { id },
     });
   },
+
+  deleteAllByUsuario(usuarioId: string) {
+    return prisma.notificacao.deleteMany({
+      where: { usuarioId },
+    });
+  },
 };

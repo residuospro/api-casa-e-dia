@@ -36,6 +36,8 @@ jest.mock('../repositories/tarefa.repository', () => ({
   tarefaRepository: {
     findRevezamentoByCiclo: jest.fn(),
     updateResponsavel: jest.fn(),
+    findExecucoesByTarefa: jest.fn(),
+    createExecucoes: jest.fn(),
   },
 }));
 
@@ -72,7 +74,7 @@ function makeCiclo(overrides = {}) {
     duracaoDias: 7,
     ativo: true,
     inicio: data,
-    ultimaRotacao: null,
+    proximaRenovacao: null,
     participantes: [],
     renovacaoAutomatica: false,
     revezamentoAutomatico: false,
@@ -155,7 +157,7 @@ describe('CicloController (integração)', () => {
     });
 
     it('deve atualizar inicio do ciclo', async () => {
-      const novaData = '2026-07-01T00:00:00.000Z';
+      const novaData = new Date(Date.now() + 86400000).toISOString();
       cicloRepository.findById.mockResolvedValue(makeCiclo());
       cicloRepository.update.mockResolvedValue(makeCiclo({ inicio: new Date(novaData) }));
 
@@ -237,7 +239,7 @@ describe('CicloController (integração)', () => {
     it('deve rotacionar tarefas', async () => {
       cicloRepository.findById
         .mockResolvedValueOnce(makeCiclo())
-        .mockResolvedValueOnce(makeCiclo({ ultimaRotacao: new Date() }));
+        .mockResolvedValueOnce(makeCiclo({ proximaRenovacao: new Date() }));
       tarefaRepository.findRevezamentoByCiclo.mockResolvedValue([
         { id: 't1', titulo: 'Lavar louça', responsavelAtualId: 'm1' },
         { id: 't2', titulo: 'Varrer', responsavelAtualId: 'm2' },
@@ -249,6 +251,11 @@ describe('CicloController (integração)', () => {
       tarefaRepository.updateResponsavel
         .mockResolvedValueOnce({ id: 't1', titulo: 'Lavar louça', responsavelAtualId: 'm1' })
         .mockResolvedValueOnce({ id: 't2', titulo: 'Varrer', responsavelAtualId: 'm2' });
+      tarefaRepository.findExecucoesByTarefa.mockResolvedValue([
+        { data: new Date('2026-07-06T10:00:00'), status: 'CONCLUIDA' },
+        { data: new Date('2026-07-08T10:00:00'), status: 'CONCLUIDA' },
+      ]);
+      tarefaRepository.createExecucoes.mockResolvedValue({ count: 2 });
 
       const response = await request(app)
         .post('/families/fam-id/ciclos/ciclo-id/rotacionar');

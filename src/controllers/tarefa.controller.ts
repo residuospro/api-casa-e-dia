@@ -192,6 +192,16 @@ export const tarefaController = {
     }
   },
 
+  async urgentes(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { familiaId } = req.params;
+      const resultado = await tarefaService.urgentes(familiaId);
+      res.json(resultado);
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async ranking(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { familiaId } = req.params;

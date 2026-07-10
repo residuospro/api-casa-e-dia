@@ -26,6 +26,8 @@ jest.mock('../repositories/tarefa.repository', () => ({
   tarefaRepository: {
     findRevezamentoByCiclo: jest.fn(),
     updateResponsavel: jest.fn(),
+    findExecucoesByTarefa: jest.fn(),
+    createExecucoes: jest.fn(),
   },
 }));
 
@@ -58,7 +60,7 @@ function makeCiclo(overrides = {}) {
     duracaoDias: 7,
     ativo: true,
     inicio: data,
-    ultimaRotacao: null,
+    proximaRenovacao: null,
     participantes: [],
     renovacaoAutomatica: false,
     revezamentoAutomatico: false,
@@ -209,7 +211,7 @@ describe('CicloService', () => {
 
     it('deve atualizar inicio do ciclo', async () => {
       cicloRepository.findById.mockResolvedValue(makeCiclo());
-      const novaData = '2026-07-01T00:00:00.000Z';
+      const novaData = new Date(Date.now() + 86400000).toISOString();
       cicloRepository.update.mockResolvedValue(makeCiclo({ inicio: new Date(novaData) }));
 
       const resultado = await service.atualizar('fam-id', 'ciclo-id', { inicio: novaData });
@@ -259,14 +261,19 @@ describe('CicloService', () => {
         .mockResolvedValueOnce({ id: 't1', titulo: 'Lavar louça', responsavelAtualId: 'm1' })
         .mockResolvedValueOnce({ id: 't2', titulo: 'Varrer', responsavelAtualId: 'm2' })
         .mockResolvedValueOnce({ id: 't3', titulo: 'Cuidar plantas', responsavelAtualId: 'm1' });
-      cicloRepository.findById.mockResolvedValue(makeCiclo({ ultimaRotacao: new Date(), iteracao: 0 }));
+      tarefaRepository.findExecucoesByTarefa.mockResolvedValue([
+        { data: new Date('2026-07-06T10:00:00'), status: 'CONCLUIDA' },
+        { data: new Date('2026-07-08T10:00:00'), status: 'CONCLUIDA' },
+      ]);
+      tarefaRepository.createExecucoes.mockResolvedValue({ count: 2 });
+      cicloRepository.findById.mockResolvedValue(makeCiclo({ proximaRenovacao: new Date(), iteracao: 0 }));
 
       const resultado = await service.rotacionar('fam-id', 'ciclo-id');
 
       expect(tarefaRepository.updateResponsavel).toHaveBeenCalledTimes(3);
-      expect(tarefaRepository.updateResponsavel).toHaveBeenNthCalledWith(1, 't1', 'm1', 1);
-      expect(tarefaRepository.updateResponsavel).toHaveBeenNthCalledWith(2, 't2', 'm2', 1);
-      expect(tarefaRepository.updateResponsavel).toHaveBeenNthCalledWith(3, 't3', 'm1', 1);
+      expect(tarefaRepository.updateResponsavel).toHaveBeenNthCalledWith(1, 't1', 'm2', 1);
+      expect(tarefaRepository.updateResponsavel).toHaveBeenNthCalledWith(2, 't2', 'm1', 1);
+      expect(tarefaRepository.updateResponsavel).toHaveBeenNthCalledWith(3, 't3', 'm2', 1);
       expect(resultado.message).toBe('Tarefas rotacionadas com sucesso');
       expect(resultado.tarefas).toHaveLength(3);
     });

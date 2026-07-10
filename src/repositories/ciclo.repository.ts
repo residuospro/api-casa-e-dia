@@ -46,7 +46,7 @@ export const cicloRepository = {
       duracaoDias: number;
       ativo: boolean;
       inicio: Date;
-      ultimaRotacao: Date | null;
+      proximaRenovacao: Date | null;
       renovadoEm: Date | null;
       participantes: string[];
       renovacaoAutomatica: boolean;
@@ -54,7 +54,7 @@ export const cicloRepository = {
       criadoEm: Date;
       atualizadoEm: Date;
     }>>(
-      `SELECT * FROM ciclos WHERE "familiaId" = $1 AND ativo = true AND "inicio" + ("duracaoDias"::text || ' days')::interval <= NOW()`,
+      `SELECT * FROM ciclos WHERE "familiaId" = $1 AND ativo = true AND COALESCE("proximaRenovacao", "inicio" + ("duracaoDias"::text || ' days')::interval) <= NOW()`,
       familiaId,
     );
   },
@@ -67,7 +67,7 @@ export const cicloRepository = {
       duracaoDias: number;
       ativo: boolean;
       inicio: Date;
-      ultimaRotacao: Date | null;
+      proximaRenovacao: Date | null;
       renovadoEm: Date | null;
       participantes: string[];
       renovacaoAutomatica: boolean;
@@ -75,7 +75,7 @@ export const cicloRepository = {
       criadoEm: Date;
       atualizadoEm: Date;
     }>>(
-      `SELECT * FROM ciclos WHERE ativo = true AND "inicio" + ("duracaoDias"::text || ' days')::interval <= NOW()`,
+      `SELECT * FROM ciclos WHERE ativo = true AND COALESCE("proximaRenovacao", "inicio" + ("duracaoDias"::text || ' days')::interval) <= NOW()`,
     );
   },
 
@@ -85,12 +85,13 @@ export const cicloRepository = {
     duracaoDias?: number;
     ativo?: boolean;
     inicio?: Date;
-    ultimaRotacao?: Date | null;
+    proximaRenovacao?: Date | null;
     renovadoEm?: Date | null;
     participantes?: string[];
     renovacaoAutomatica?: boolean;
     revezamentoAutomatico?: boolean;
     iteracao?: number;
+    expirado?: boolean;
   }) {
     return prisma.ciclo.update({ where: { id }, data });
   },

@@ -139,12 +139,13 @@ model Ciclo {
   duracaoDias          Int
   ativo                Boolean   @default(true)
   inicio               DateTime  @default(now())
-  ultimaRotacao        DateTime?
   renovadoEm           DateTime?
+  proximaRenovacao     DateTime?
   participantes        String[]  @default([])
   renovacaoAutomatica  Boolean   @default(false)
   revezamentoAutomatico Boolean  @default(false)
   iteracao             Int       @default(0)
+  expirado             Boolean   @default(false)
   criadoEm             DateTime  @default(now())
   atualizadoEm         DateTime  @updatedAt
   familia              Familia   @relation(fields: [familiaId], references: [id], onDelete: Cascade)
@@ -203,6 +204,7 @@ model ExecucaoTarefa {
   notificacaoCriada    Boolean        @default(false)
   notificacaoAtrasada  Boolean        @default(false)
   criadoEm             DateTime       @default(now())
+  iteracao             Int?
   tarefa               Tarefa         @relation(fields: [tarefaId], references: [id], onDelete: Cascade)
   concluidoPor         MembroFamilia? @relation("execucoesConcluidas", fields: [concluidoPorId], references: [id])
 
