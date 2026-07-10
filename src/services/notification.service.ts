@@ -92,6 +92,11 @@ export class NotificationService {
     await notificationRepository.delete(notificacaoId);
     return { message: 'Notificação excluída com sucesso' };
   }
+
+  async excluirTodas(usuarioId: string) {
+    await notificationRepository.deleteAllByUsuario(usuarioId);
+    return { message: 'Todas as notificações foram excluídas' };
+  }
 }
 
 export const notificationService = new NotificationService();

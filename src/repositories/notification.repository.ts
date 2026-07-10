@@ -10,7 +10,10 @@ export const notificationRepository = {
     dados?: string | null;
   }) {
     return prisma.notificacao.create({
-      data: data as any,
+      data: {
+        ...data,
+        criadoEm: new Date(),
+      } as any,
     });
   },
 
@@ -33,6 +36,16 @@ export const notificationRepository = {
     });
   },
 
+  findCicloNotificationExists(usuarioId: string, cicloId: string) {
+    return prisma.notificacao.findFirst({
+      where: {
+        usuarioId,
+        tipo: 'CICLO_VENCIDO',
+        dados: { contains: cicloId },
+      },
+    });
+  },
+
   markAsRead(id: string) {
     return prisma.notificacao.update({
       where: { id },
@@ -50,6 +63,12 @@ export const notificationRepository = {
   delete(id: string) {
     return prisma.notificacao.delete({
       where: { id },
+    });
+  },
+
+  deleteAllByUsuario(usuarioId: string) {
+    return prisma.notificacao.deleteMany({
+      where: { usuarioId },
     });
   },
 };

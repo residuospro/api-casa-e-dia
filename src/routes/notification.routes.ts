@@ -8,6 +8,7 @@ router.get('/', authMiddleware, notificationController.listar);
 router.get('/unread-count', authMiddleware, notificationController.contarNaoLidas);
 router.patch('/:id/read', authMiddleware, notificationController.marcarComoLida);
 router.patch('/read-all', authMiddleware, notificationController.marcarTodasComoLidas);
+router.delete('/all', authMiddleware, notificationController.excluirTodas);
 router.delete('/:id', authMiddleware, notificationController.excluir);
 
 export default router;

@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "ciclos" ADD COLUMN     "inicio" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN     "ultimaRotacao" TIMESTAMP(3);
