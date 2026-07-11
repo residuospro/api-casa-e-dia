@@ -92,7 +92,6 @@ describe('CicloController (integração)', () => {
   describe('POST /families/:familiaId/ciclos', () => {
     it('deve criar ciclo com dados válidos', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id', nome: 'Família Teste' });
-      cicloRepository.findCicloAtivo.mockResolvedValue(null);
       cicloRepository.create.mockResolvedValue(makeCiclo());
 
       const response = await request(app)
@@ -203,7 +202,6 @@ describe('CicloController (integração)', () => {
   describe('PATCH /families/:familiaId/ciclos/:id/ativo', () => {
     it('deve ativar ciclo', async () => {
       cicloRepository.findById.mockResolvedValue(makeCiclo({ ativo: false }));
-      cicloRepository.findCicloAtivo.mockResolvedValue(null);
       cicloRepository.update.mockResolvedValue(makeCiclo({ ativo: true }));
 
       const response = await request(app)

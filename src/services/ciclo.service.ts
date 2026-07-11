@@ -29,11 +29,9 @@ export class CicloService {
       throw new AppError('Família não encontrada', 404);
     }
 
-    const jaExisteAtivo = await cicloRepository.findCicloAtivo(dto.familiaId);
-
     return cicloRepository.create({
       ...dto,
-      ativo: jaExisteAtivo ? false : (dto.ativo ?? true),
+      ativo: dto.ativo ?? true,
     });
   }
 
@@ -75,13 +73,6 @@ export class CicloService {
     const ciclo = await cicloRepository.findById(cicloId);
     if (!ciclo || ciclo.familiaId !== familiaId) {
       throw new AppError('Ciclo não encontrado', 404);
-    }
-
-    if (dto.ativo === true) {
-      const outroAtivo = await cicloRepository.findCicloAtivo(familiaId);
-      if (outroAtivo && outroAtivo.id !== cicloId) {
-        throw new AppError('Já existe um ciclo ativo nesta família. Desative-o primeiro.', 400);
-      }
     }
 
     const { inicio, ...rest } = dto;
@@ -201,13 +192,6 @@ export class CicloService {
     const ciclo = await cicloRepository.findById(cicloId);
     if (!ciclo || ciclo.familiaId !== familiaId) {
       throw new AppError('Ciclo não encontrado', 404);
-    }
-
-    if (ativo === true) {
-      const outroAtivo = await cicloRepository.findCicloAtivo(familiaId);
-      if (outroAtivo && outroAtivo.id !== cicloId) {
-        throw new AppError('Já existe um ciclo ativo nesta família. Desative-o primeiro.', 400);
-      }
     }
 
     return cicloRepository.update(cicloId, { ativo });
