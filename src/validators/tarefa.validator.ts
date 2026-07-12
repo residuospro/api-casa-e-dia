@@ -18,6 +18,7 @@ export const criarTarefaSchema = z.object({
   categoria: z.nativeEnum(Categoria),
   modoDistribuicao: z.nativeEnum(ModoDistribuicao).nullable().optional(),
   responsavelAtualId: z.string().nullable().optional(),
+  atribuirAutomaticamente: z.boolean().optional(),
   pontos: z.number().int().min(0).optional(),
   cicloId: z.string().nullable().optional(),
   execucoes: z.array(execucaoSchema).nullable().optional(),

@@ -78,9 +78,8 @@ describe('CicloService', () => {
   });
 
   describe('criar', () => {
-    it('deve criar um ciclo ativo quando não há outro ativo', async () => {
+    it('deve criar um ciclo ativo por padrão', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id', nome: 'Família Teste' });
-      cicloRepository.findCicloAtivo.mockResolvedValue(null);
       cicloRepository.create.mockResolvedValue(makeCiclo({ ativo: true }));
 
       const resultado = await service.criar({
@@ -98,15 +97,15 @@ describe('CicloService', () => {
       expect(resultado.ativo).toBe(true);
     });
 
-    it('deve criar ciclo com ativo false se já existir outro ativo', async () => {
+    it('deve criar ciclo com ativo conforme informado no dto', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id', nome: 'Família Teste' });
-      cicloRepository.findCicloAtivo.mockResolvedValue({ id: 'outro-ciclo', nome: 'Ativo' });
       cicloRepository.create.mockResolvedValue(makeCiclo({ ativo: false }));
 
       const resultado = await service.criar({
         familiaId: 'fam-id',
         nome: 'Novo Ciclo',
         duracaoDias: 7,
+        ativo: false,
       });
 
       expect(cicloRepository.create).toHaveBeenCalledWith({
@@ -170,7 +169,6 @@ describe('CicloService', () => {
   describe('atualizar', () => {
     it('deve atualizar ciclo', async () => {
       cicloRepository.findById.mockResolvedValue(makeCiclo());
-      cicloRepository.findCicloAtivo.mockResolvedValue(null);
       cicloRepository.update.mockResolvedValue(makeCiclo({ nome: 'Novo Ciclo', duracaoDias: 14 }));
 
       const resultado = await service.atualizar('fam-id', 'ciclo-id', { nome: 'Novo Ciclo', duracaoDias: 14 });
@@ -179,33 +177,13 @@ describe('CicloService', () => {
       expect(resultado.nome).toBe('Novo Ciclo');
     });
 
-    it('deve permitir ativar ciclo se não houver outro ativo', async () => {
+    it('deve permitir ativar ciclo', async () => {
       cicloRepository.findById.mockResolvedValue(makeCiclo({ ativo: false }));
-      cicloRepository.findCicloAtivo.mockResolvedValue(null);
       cicloRepository.update.mockResolvedValue(makeCiclo({ ativo: true }));
 
       const resultado = await service.atualizar('fam-id', 'ciclo-id', { ativo: true });
 
       expect(cicloRepository.update).toHaveBeenCalledWith('ciclo-id', { ativo: true });
-      expect(resultado.ativo).toBe(true);
-    });
-
-    it('deve lançar erro se tentar ativar quando outro ciclo já está ativo', async () => {
-      cicloRepository.findById.mockResolvedValue(makeCiclo({ ativo: false }));
-      cicloRepository.findCicloAtivo.mockResolvedValue({ id: 'outro-ativo', nome: 'Outro' });
-
-      await expect(
-        service.atualizar('fam-id', 'ciclo-id', { ativo: true }),
-      ).rejects.toThrow(AppError);
-    });
-
-    it('não deve bloquear se o ativo for o mesmo ciclo', async () => {
-      cicloRepository.findById.mockResolvedValue(makeCiclo({ id: 'ciclo-id', ativo: true }));
-      cicloRepository.findCicloAtivo.mockResolvedValue({ id: 'ciclo-id', ativo: true });
-      cicloRepository.update.mockResolvedValue(makeCiclo({ ativo: true }));
-
-      const resultado = await service.atualizar('fam-id', 'ciclo-id', { ativo: true });
-
       expect(resultado.ativo).toBe(true);
     });
 
@@ -342,7 +320,6 @@ describe('CicloService', () => {
 describe('alterarAtivo', () => {
     it('deve ativar ciclo', async () => {
       cicloRepository.findById.mockResolvedValue(makeCiclo({ ativo: false }));
-      cicloRepository.findCicloAtivo.mockResolvedValue(null);
       cicloRepository.update.mockResolvedValue(makeCiclo({ ativo: true }));
 
       const resultado = await service.alterarAtivo('fam-id', 'ciclo-id', true);
@@ -359,13 +336,6 @@ describe('alterarAtivo', () => {
 
       expect(cicloRepository.update).toHaveBeenCalledWith('ciclo-id', { ativo: false });
       expect(resultado.ativo).toBe(false);
-    });
-
-    it('deve lançar erro se ativar e já existir outro ativo', async () => {
-      cicloRepository.findById.mockResolvedValue(makeCiclo({ ativo: false }));
-      cicloRepository.findCicloAtivo.mockResolvedValue({ id: 'outro-ativo', nome: 'Outro' });
-
-      await expect(service.alterarAtivo('fam-id', 'ciclo-id', true)).rejects.toThrow(AppError);
     });
 
     it('deve lançar erro se ciclo não existir', async () => {

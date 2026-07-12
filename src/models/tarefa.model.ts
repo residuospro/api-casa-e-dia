@@ -38,6 +38,7 @@ export interface CriarTarefaDTO {
   categoria: Categoria;
   modoDistribuicao?: ModoDistribuicao | null;
   responsavelAtualId?: string | null;
+  atribuirAutomaticamente?: boolean;
   pontos?: number;
   criadoPorId: string;
   cicloIteracao?: number | null;

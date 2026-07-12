@@ -77,15 +77,38 @@ export class TarefaService {
           throw new AppError('Ciclo não encontrado', 404);
         }
 
+        if (dto.atribuirAutomaticamente) {
+          const participantes = cicloRevezamento.participantes;
+          if (participantes.length === 0) {
+            throw new AppError('Ciclo não possui participantes para atribuição automática', 400);
+          }
+
+          const membrosAtivos = await familyRepository.findMembrosAtivosByFamilia(dto.familiaId);
+          const idsAtivos = new Set(membrosAtivos.map((m) => m.id));
+          const participantesValidos = participantes.filter((p) => idsAtivos.has(p));
+
+          if (participantesValidos.length === 0) {
+            throw new AppError('Nenhum participante do ciclo é um membro ativo da família', 400);
+          }
+
+          const contagem = await tarefaRepository.countTarefasAtivasByCicloGroupByResponsavel(cicloRevezamento.id);
+          const mapaContagem = new Map(contagem.map((c) => [c.responsavelAtualId!, c._count.id]));
+          const menorCount = Math.min(...participantesValidos.map((p) => mapaContagem.get(p) ?? 0));
+          const candidatos = participantesValidos.filter((p) => (mapaContagem.get(p) ?? 0) === menorCount);
+          dto.responsavelAtualId = candidatos[Math.floor(Math.random() * candidatos.length)];
+        }
+
         if (dto.responsavelAtualId && !cicloRevezamento.participantes.includes(dto.responsavelAtualId)) {
           throw new AppError('Responsável não faz parte do ciclo', 400);
         }
 
         if (dto.execucoes && dto.execucoes.length > 0) {
-          const vencimento = new Date(cicloRevezamento.inicio.getTime() + cicloRevezamento.duracaoDias * 24 * 60 * 60 * 1000);
+          const referencia = cicloRevezamento.proximaRenovacao
+            ? new Date(cicloRevezamento.proximaRenovacao)
+            : new Date(cicloRevezamento.inicio.getTime() + cicloRevezamento.duracaoDias * 24 * 60 * 60 * 1000);
 
           for (const execucao of dto.execucoes) {
-            if (execucao.data > vencimento) {
+            if (execucao.data > referencia) {
               throw new AppError('Execução com data após o vencimento do ciclo', 400);
             }
           }
@@ -140,15 +163,6 @@ export class TarefaService {
     await tarefaRepository.atualizarExecucoesAtrasadas(familiaId);
 
     const filtro = options.filtro ? { ...options.filtro } : {};
-
-    if (!filtro.cicloId) {
-      const cicloAtivo = await cicloRepository.findCicloAtivo(familiaId);
-      if (cicloAtivo) {
-        filtro.cicloId = [cicloAtivo.id, 'null'];
-      } else {
-        filtro.cicloId = 'null';
-      }
-    }
 
     if (filtro.dependente !== undefined) {
       const isDependente = filtro.dependente === 'true';
@@ -411,32 +425,30 @@ export class TarefaService {
       StatusExecucao.ATRASADA,
     );
 
-    const cicloAtivo = await cicloRepository.findCicloAtivo(familiaId);
-    let diasRestantes = null;
-    let ciclo = null;
+    const ciclosAtivos = await cicloRepository.findCiclosAtivos(familiaId);
+    const agora = new Date();
 
-    if (cicloAtivo) {
-      const referencia = cicloAtivo.proximaRenovacao
-        ? new Date(cicloAtivo.proximaRenovacao)
-        : new Date(cicloAtivo.inicio.getTime() + cicloAtivo.duracaoDias * 24 * 60 * 60 * 1000);
-      const agora = new Date();
+    const ciclos = ciclosAtivos.map((c) => {
+      const referencia = c.proximaRenovacao
+        ? new Date(c.proximaRenovacao)
+        : new Date(c.inicio.getTime() + c.duracaoDias * 24 * 60 * 60 * 1000);
       const diffMs = referencia.getTime() - agora.getTime();
-      diasRestantes = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+      const diasRestantes = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
 
-      ciclo = {
-        id: cicloAtivo.id,
-        nome: cicloAtivo.nome,
-        inicio: cicloAtivo.inicio,
-        duracaoDias: cicloAtivo.duracaoDias,
+      return {
+        id: c.id,
+        nome: c.nome,
+        inicio: c.inicio,
+        duracaoDias: c.duracaoDias,
+        diasRestantes,
       };
-    }
+    });
 
     return {
       totalTarefas,
       execucoesConcluidas,
       execucoesAtrasadas,
-      diasRestantes,
-      ciclo,
+      ciclos,
     };
   }
 }

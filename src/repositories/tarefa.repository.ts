@@ -41,7 +41,7 @@ function cleanUpdateData(data: Record<string, unknown>): Record<string, unknown>
 
 export const tarefaRepository = {
   create(data: CriarTarefaDTO & { criadoPorId: string }) {
-    const { execucoes, ...tarefaData } = data;
+    const { execucoes, atribuirAutomaticamente, ...tarefaData } = data;
 
     return prisma.tarefa.create({
       data: {
@@ -358,6 +358,14 @@ export const tarefaRepository = {
         ativo: true,
         execucoes: { some: { status } },
       },
+    });
+  },
+
+  countTarefasAtivasByCicloGroupByResponsavel(cicloId: string) {
+    return prisma.tarefa.groupBy({
+      by: ['responsavelAtualId'],
+      where: { cicloId, ativo: true, responsavelAtualId: { not: null } },
+      _count: { id: true },
     });
   },
 

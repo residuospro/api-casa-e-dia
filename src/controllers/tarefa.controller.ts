@@ -36,6 +36,7 @@ export const tarefaController = {
         categoria: dados.categoria,
         modoDistribuicao: dados.modoDistribuicao,
         responsavelAtualId: dados.responsavelAtualId,
+        atribuirAutomaticamente: dados.atribuirAutomaticamente,
         pontos: dados.pontos,
         cicloId: dados.cicloId,
         familiaId,
