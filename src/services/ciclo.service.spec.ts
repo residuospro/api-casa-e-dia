@@ -189,13 +189,14 @@ describe('CicloService', () => {
 
     it('deve atualizar inicio do ciclo', async () => {
       cicloRepository.findById.mockResolvedValue(makeCiclo());
-      const novaData = new Date(Date.now() + 86400000).toISOString();
-      cicloRepository.update.mockResolvedValue(makeCiclo({ inicio: new Date(novaData) }));
+      const partes = '2026-07-13'.split('-');
+      const dataEsperada = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
+      cicloRepository.update.mockResolvedValue(makeCiclo({ inicio: dataEsperada }));
 
-      const resultado = await service.atualizar('fam-id', 'ciclo-id', { inicio: novaData });
+      const resultado = await service.atualizar('fam-id', 'ciclo-id', { inicio: '2026-07-13' });
 
-      expect(cicloRepository.update).toHaveBeenCalledWith('ciclo-id', { inicio: new Date(novaData) });
-      expect(resultado.inicio).toEqual(new Date(novaData));
+      expect(cicloRepository.update).toHaveBeenCalledWith('ciclo-id', { inicio: dataEsperada });
+      expect(resultado.inicio).toEqual(dataEsperada);
     });
 
     it('deve lançar erro se ciclo não existir', async () => {
@@ -298,8 +299,8 @@ describe('CicloService', () => {
   it('deve retornar ciclos ativos no formato text/value', async () => {
     familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id' });
     cicloRepository.findCiclosAtivos.mockResolvedValue([
-      { id: 'c1', nome: 'Ciclo A' },
-      { id: 'c2', nome: 'Ciclo B' },
+      { id: 'c1', nome: 'Ciclo A', inicio: new Date(), duracaoDias: 7, proximaRenovacao: null },
+      { id: 'c2', nome: 'Ciclo B', inicio: new Date(), duracaoDias: 14, proximaRenovacao: null },
     ]);
 
     const resultado = await service.listarAtivos('fam-id');

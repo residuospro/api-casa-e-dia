@@ -9,18 +9,23 @@ import { NotificacaoTipo } from '../models/enums';
 import { renovarExecucoesTarefa } from './tarefa.service';
 
 export class CicloService {
+  private calcularVencimento(ciclo: {
+    inicio: Date;
+    duracaoDias: number;
+    proximaRenovacao: Date | null;
+  }): Date {
+    if (ciclo.proximaRenovacao) {
+      return new Date(ciclo.proximaRenovacao);
+    }
+    return new Date(ciclo.inicio.getTime() + ciclo.duracaoDias * 24 * 60 * 60 * 1000);
+  }
+
   private estaExpirado(ciclo: {
     inicio: Date;
     duracaoDias: number;
     proximaRenovacao: Date | null;
   }): boolean {
-    const agora = new Date();
-    if (ciclo.proximaRenovacao) {
-      return ciclo.proximaRenovacao <= agora;
-    }
-    const fim = new Date(ciclo.inicio);
-    fim.setDate(fim.getDate() + ciclo.duracaoDias);
-    return fim <= agora;
+    return this.calcularVencimento(ciclo) <= new Date();
   }
 
   async criar(dto: CriarCicloDTO) {
@@ -44,6 +49,7 @@ export class CicloService {
     const ciclos = await cicloRepository.findByFamilia(familiaId);
 
     for (const ciclo of ciclos) {
+      ciclo.proximaRenovacao = this.calcularVencimento(ciclo);
       const expirado = this.estaExpirado(ciclo);
       if (expirado && !ciclo.expirado) {
         await cicloRepository.update(ciclo.id, { expirado: true });
@@ -60,6 +66,7 @@ export class CicloService {
       throw new AppError('Ciclo não encontrado', 404);
     }
 
+    ciclo.proximaRenovacao = this.calcularVencimento(ciclo);
     const expirado = this.estaExpirado(ciclo);
     if (expirado && !ciclo.expirado) {
       await cicloRepository.update(ciclo.id, { expirado: true });
@@ -77,8 +84,11 @@ export class CicloService {
 
     const { inicio, ...rest } = dto;
     if (inicio) {
-      const dataInicio = new Date(inicio);
-      if (dataInicio < new Date()) {
+      const partes = inicio.split('T')[0].split('-');
+      const dataInicio = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      if (dataInicio < hoje) {
         throw new AppError('Data de início não pode ser no passado', 400);
       }
       return cicloRepository.update(cicloId, { ...rest, inicio: dataInicio });
@@ -178,6 +188,7 @@ export class CicloService {
     const ciclos = await cicloRepository.findCiclosAtivos(familiaId);
 
     for (const ciclo of ciclos) {
+      ciclo.proximaRenovacao = this.calcularVencimento(ciclo);
       const expirado = this.estaExpirado(ciclo);
       if (expirado && !ciclo.expirado) {
         await cicloRepository.update(ciclo.id, { expirado: true });

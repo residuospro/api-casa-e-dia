@@ -79,6 +79,7 @@ model Usuario {
   criadoEm            DateTime        @default(now())
   membros             MembroFamilia[]
   notificacoes        Notificacao[]
+  pushSubscriptions   PushSubscription[]
 
   @@map("usuarios")
 }
@@ -129,6 +130,20 @@ model Notificacao {
   usuario   Usuario          @relation(fields: [usuarioId], references: [id])
 
   @@map("notificacoes")
+}
+
+model PushSubscription {
+  id            String   @id @default(cuid())
+  usuarioId     String
+  endpoint      String   @unique
+  p256dh        String
+  auth          String
+  userAgent     String?
+  criadoEm      DateTime @default(now())
+  atualizadoEm  DateTime @updatedAt
+  usuario       Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("push_subscriptions")
 }
 
 model Ciclo {
