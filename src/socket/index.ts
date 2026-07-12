@@ -10,7 +10,7 @@ let io: Server | null = null;
 export function initSocket(httpServer: HTTPServer) {
   io = new Server(httpServer, {
     cors: {
-      origin: true,
+      origin: env.frontendUrl,
       credentials: true,
     },
   });

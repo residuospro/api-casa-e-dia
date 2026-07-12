@@ -12,7 +12,7 @@ import { initCycleScheduler } from './scheduler/cycle';
 
 const app = express();
 
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors({ origin: env.frontendUrl, credentials: true }));
 app.use(express.json());
 
 app.use(routes);
