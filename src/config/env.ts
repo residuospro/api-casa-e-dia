@@ -13,6 +13,4 @@ export const env = {
   },
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
   schedulerInterval: process.env.SCHEDULER_INTERVAL || '* * * * *',
-  vapidPublicKey: process.env.VAPID_PUBLIC_KEY ?? '',
-  vapidPrivateKey: process.env.VAPID_PRIVATE_KEY ?? '',
 };

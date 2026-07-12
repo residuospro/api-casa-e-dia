@@ -10,6 +10,5 @@ router.patch('/:id/read', authMiddleware, notificationController.marcarComoLida)
 router.patch('/read-all', authMiddleware, notificationController.marcarTodasComoLidas);
 router.delete('/all', authMiddleware, notificationController.excluirTodas);
 router.delete('/:id', authMiddleware, notificationController.excluir);
-router.post('/push-subscribe', authMiddleware, notificationController.pushSubscribe);
 
 export default router;
