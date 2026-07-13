@@ -20,6 +20,15 @@ const execucaoInclude = {
           usuario: { select: { id: true } },
         },
       },
+      familia: {
+        include: {
+          membros: {
+            where: { permissao: 'ADMIN' as const, status: 'ACEITO' as const },
+            include: { usuario: { select: { id: true } } },
+            take: 1,
+          },
+        },
+      },
     },
   },
 };

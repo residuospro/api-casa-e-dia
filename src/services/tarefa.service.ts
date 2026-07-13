@@ -130,9 +130,18 @@ export class TarefaService {
 
     if (dto.responsavelAtualId && dto.responsavelAtualId !== dto.criadoPorId) {
       const membroResponsavel = await familyRepository.findMembroById(dto.responsavelAtualId);
-      if (membroResponsavel?.usuario) {
+
+      let usuarioIdNotificacao = membroResponsavel?.usuario?.id;
+
+      if (!usuarioIdNotificacao) {
+        const membros = await familyRepository.findMembrosByFamilia(tarefa.familiaId);
+        const admin = membros.find(m => m.permissao === 'ADMIN' && m.usuario?.id);
+        usuarioIdNotificacao = admin?.usuario?.id;
+      }
+
+      if (usuarioIdNotificacao) {
         await notificationService.criar({
-          usuarioId: membroResponsavel.usuario.id,
+          usuarioId: usuarioIdNotificacao,
           tipo: NotificacaoTipo.TAREFA_ATRIBUIDA,
           titulo: 'Nova tarefa atribuída',
           mensagem: `Você foi designado(a) para a tarefa "${tarefa.titulo}"`,

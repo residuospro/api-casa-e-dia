@@ -2,6 +2,21 @@ import { schedulerRepository } from '../repositories/scheduler.repository';
 import { notificationService } from './notification.service';
 import { NotificacaoTipo } from '../models/enums';
 
+function resolverDestinatario(tarefa: any): { usuarioId: string; nome: string } | null {
+  const responsavel = tarefa.responsavelAtual;
+
+  if (responsavel?.usuario?.id) {
+    return { usuarioId: responsavel.usuario.id, nome: responsavel.nome ?? 'Responsável' };
+  }
+
+  const admin = tarefa.familia?.membros?.[0];
+  if (admin?.usuario?.id) {
+    return { usuarioId: admin.usuario.id, nome: admin.nome ?? 'Administrador' };
+  }
+
+  return null;
+}
+
 export class SchedulerService {
   async executar(): Promise<void> {
     const inicio = Date.now();
@@ -29,10 +44,10 @@ export class SchedulerService {
     const idsNotificadas: string[] = [];
 
     for (const execucao of execucoes) {
-      const tarefa = execucao.tarefa;
-      const responsavel = tarefa.responsavelAtual;
+      const tarefa = (execucao as any).tarefa;
+      const destinatario = resolverDestinatario(tarefa);
 
-      if (!responsavel?.usuario) continue;
+      if (!destinatario) continue;
 
       const horario = execucao.data.toLocaleTimeString('pt-BR', {
         hour: '2-digit',
@@ -49,7 +64,7 @@ export class SchedulerService {
       });
 
       await notificationService.criar({
-        usuarioId: responsavel.usuario.id,
+        usuarioId: destinatario.usuarioId,
         tipo: NotificacaoTipo.EXECUCAO_TAREFA,
         titulo,
         mensagem,
@@ -74,10 +89,10 @@ export class SchedulerService {
     const idsNotificadas: string[] = [];
 
     for (const execucao of execucoes) {
-      const tarefa = execucao.tarefa;
-      const responsavel = tarefa.responsavelAtual;
+      const tarefa = (execucao as any).tarefa;
+      const destinatario = resolverDestinatario(tarefa);
 
-      if (!responsavel?.usuario) continue;
+      if (!destinatario) continue;
 
       const titulo = `Tarefa atrasada: ${tarefa.titulo}`;
       const mensagem = `A tarefa "${tarefa.titulo}" está atrasada! O prazo venceu no dia ${execucao.data.toLocaleDateString('pt-BR')}. Corra para concluí-la.`;
@@ -89,7 +104,7 @@ export class SchedulerService {
       });
 
       await notificationService.criar({
-        usuarioId: responsavel.usuario.id,
+        usuarioId: destinatario.usuarioId,
         tipo: NotificacaoTipo.EXECUCAO_TAREFA,
         titulo,
         mensagem,
