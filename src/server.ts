@@ -9,13 +9,14 @@ import { env } from './config/env';
 import { initSocket } from './socket';
 import { initScheduler } from './scheduler';
 import { initCycleScheduler } from './scheduler/cycle';
-import { initializeApp, applicationDefault } from 'firebase-admin/app';
+import { initializeApp, cert } from 'firebase-admin/app';
+import type { ServiceAccount } from 'firebase-admin';
+import serviceAccountKey from '../serviceAccountKey.json';
 
 const app = express();
 
 initializeApp({
-  credential: applicationDefault(),
-  projectId: env.firebaseProjectId,
+  credential: cert(serviceAccountKey as ServiceAccount),
 });
 
 app.use(cors({ origin: env.frontendUrl, credentials: true }));

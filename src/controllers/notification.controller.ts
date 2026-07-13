@@ -63,7 +63,9 @@ export const notificationController = {
   async pushSubscribe(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { token, platform } = req.body;
+      console.log('[FCM Debug] POST push-subscribe recebido. usuarioId:', req.usuario?.id, 'token:', token?.substring(0, 30) + '...');
       if (!token || typeof token !== 'string') {
+        console.log('[FCM Debug] Token inválido ou ausente');
         res.status(400).json({ error: 'Bad Request', message: 'Token é obrigatório' });
         return;
       }
@@ -72,8 +74,10 @@ export const notificationController = {
         token,
         platform,
       );
+      console.log('[FCM Debug] push-subscribe sucesso:', resultado);
       res.status(201).json(resultado);
     } catch (err) {
+      console.error('[FCM Debug] Erro no push-subscribe:', err);
       next(err);
     }
   },

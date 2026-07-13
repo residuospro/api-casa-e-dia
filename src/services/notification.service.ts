@@ -104,6 +104,7 @@ export class NotificationService {
   }
 
   private async enviarPush(usuarioId: string, tipo: NotificacaoTipo, notificacao: any) {
+    console.log('[FCM Debug] enviarPush chamado. usuarioId:', usuarioId, 'tipo:', tipo);
     let url = '/';
 
     if (notificacao.dados) {
@@ -116,6 +117,7 @@ export class NotificationService {
       }
     }
 
+    console.log('[FCM Debug] Enviando push com url:', url);
     await pushNotificationService.sendToUser(usuarioId, {
       titulo: notificacao.titulo,
       mensagem: notificacao.mensagem,
