@@ -79,6 +79,7 @@ model Usuario {
   criadoEm            DateTime        @default(now())
   membros             MembroFamilia[]
   notificacoes        Notificacao[]
+  dispositivosPush    DispositivoPush[]
 
   @@map("usuarios")
 }
@@ -129,6 +130,18 @@ model Notificacao {
   usuario   Usuario          @relation(fields: [usuarioId], references: [id])
 
   @@map("notificacoes")
+}
+
+model DispositivoPush {
+  id            String   @id @default(cuid())
+  usuarioId     String
+  token         String   @unique
+  plataforma    String   @default("fcm")
+  criadoEm      DateTime @default(now())
+  atualizadoEm  DateTime @updatedAt
+  usuario       Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("dispositivos_push")
 }
 
 model Ciclo {
