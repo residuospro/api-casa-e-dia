@@ -77,4 +77,18 @@ export const notificationController = {
       next(err);
     }
   },
+
+  async pushUnsubscribe(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { token } = req.body;
+      if (!token || typeof token !== 'string') {
+        res.status(400).json({ error: 'Bad Request', message: 'Token é obrigatório' });
+        return;
+      }
+      const resultado = await pushNotificationService.unsubscribe(req.usuario!.id, token);
+      res.json(resultado);
+    } catch (err) {
+      next(err);
+    }
+  },
 };

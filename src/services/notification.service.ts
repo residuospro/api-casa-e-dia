@@ -2,6 +2,7 @@ import { notificationRepository } from '../repositories/notification.repository'
 import { NotificacaoTipo } from '../models/enums';
 import { AppError } from './auth.service';
 import { getIO } from '../socket';
+import { pushNotificationService } from './push-notification.service';
 
 function formatNotificacao(n: any) {
   let dadosParsed: any = null;
@@ -46,12 +47,16 @@ export class NotificationService {
   }) {
     const notificacao = await notificationRepository.create(dto);
 
+    const formatada = formatNotificacao(notificacao);
+
     try {
       const io = getIO();
-      io.to(`user:${dto.usuarioId}`).emit('notification:new', formatNotificacao(notificacao));
+      io.to(`user:${dto.usuarioId}`).emit('notification:new', formatada);
     } catch {
       // Socket.IO não inicializado (ex: testes)
     }
+
+    this.enviarPush(dto.usuarioId, dto.tipo, formatada).catch(() => {});
 
     return notificacao;
   }
@@ -96,6 +101,27 @@ export class NotificationService {
   async excluirTodas(usuarioId: string) {
     await notificationRepository.deleteAllByUsuario(usuarioId);
     return { message: 'Todas as notificações foram excluídas' };
+  }
+
+  private async enviarPush(usuarioId: string, tipo: NotificacaoTipo, notificacao: any) {
+    let url = '/';
+
+    if (notificacao.dados) {
+      if (notificacao.dados.tarefaId) {
+        url = `/tarefas/${notificacao.dados.tarefaId}`;
+      } else if (notificacao.dados.cicloId) {
+        url = `/ciclos/${notificacao.dados.cicloId}`;
+      } else if (notificacao.dados.familiaId) {
+        url = `/familia/${notificacao.dados.familiaId}`;
+      }
+    }
+
+    await pushNotificationService.sendToUser(usuarioId, {
+      titulo: notificacao.titulo,
+      mensagem: notificacao.mensagem,
+      url,
+      id: notificacao.id,
+    });
   }
 }
 
