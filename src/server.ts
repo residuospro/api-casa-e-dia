@@ -2,6 +2,8 @@ import 'dotenv/config';
 import http from 'http';
 import express from 'express';
 import cors from 'cors';
+import fs from 'fs';
+import path from 'path';
 import routes from './routes';
 import uploadRoutes from './routes/upload.routes';
 import { errorMiddleware } from './middlewares/error.middleware';
@@ -11,12 +13,14 @@ import { initScheduler } from './scheduler';
 import { initCycleScheduler } from './scheduler/cycle';
 import { initializeApp, cert } from 'firebase-admin/app';
 import type { ServiceAccount } from 'firebase-admin';
-import serviceAccountKey from '../serviceAccountKey.json';
 
 const app = express();
 
+const serviceAccountPath = path.resolve(__dirname, '../serviceAccountKey.json');
+const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf-8')) as ServiceAccount;
+
 initializeApp({
-  credential: cert(serviceAccountKey as ServiceAccount),
+  credential: cert(serviceAccount),
 });
 
 app.use(cors({ origin: env.frontendUrl, credentials: true }));
