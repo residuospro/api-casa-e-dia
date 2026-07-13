@@ -4,6 +4,7 @@ import multer from 'multer';
 import { userService } from '../services/user.service';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { atualizarPerfilSchema } from '../services/auth.service';
+import { fileToBase64 } from '../middlewares/upload.middleware';
 
 export const userController = {
   async perfil(req: AuthRequest, res: Response, next: NextFunction) {
@@ -19,7 +20,7 @@ export const userController = {
     try {
       const dados = atualizarPerfilSchema.parse({
         ...req.body,
-        fotoPerfil: req.file ? `/uploads/${req.file.filename}` : req.body.fotoPerfil || undefined,
+        fotoPerfil: req.file ? fileToBase64(req.file) : req.body.fotoPerfil || undefined,
       });
       const resultado = await userService.updateProfile(req.usuario!.id, dados);
       res.json(resultado);

@@ -4,6 +4,7 @@ import { AuthRequest } from '../middlewares/auth.middleware';
 import { z } from 'zod';
 import { ZodError } from 'zod';
 import multer from 'multer';
+import { fileToBase64 } from '../middlewares/upload.middleware';
 
 const cadastrarDependenteSchema = z.object({
   nome: z.string().min(1, 'Nome é obrigatório'),
@@ -138,7 +139,7 @@ export const familyController = {
       const { familiaId } = req.params;
       const dados = cadastrarDependenteSchema.parse({
         ...req.body,
-        fotoPerfil: req.file ? `/uploads/${req.file.filename}` : req.body.fotoPerfil || undefined,
+        fotoPerfil: req.file ? fileToBase64(req.file) : req.body.fotoPerfil || undefined,
       });
       const resultado = await familyService.cadastrarDependente({ ...dados, familiaId });
       res.status(201).json(resultado);
@@ -243,7 +244,7 @@ export const familyController = {
       const { familiaId, membroId } = req.params;
       const dados = atualizarMembroSchema.parse({
         ...req.body,
-        fotoPerfil: req.file ? `/uploads/${req.file.filename}` : req.body.fotoPerfil || undefined,
+        fotoPerfil: req.file ? fileToBase64(req.file) : req.body.fotoPerfil || undefined,
       });
       const resultado = await familyService.atualizarMembro(familiaId, membroId, dados);
       res.json(resultado);

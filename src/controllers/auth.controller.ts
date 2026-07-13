@@ -9,13 +9,14 @@ import {
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { ZodError } from 'zod';
 import multer from 'multer';
+import { fileToBase64 } from '../middlewares/upload.middleware';
 
 export const authController = {
   async cadastrar(req: Request, res: Response, next: NextFunction) {
     try {
       const dto = cadastrarSchema.parse({
         ...req.body,
-        fotoPerfil: req.file ? `/uploads/${req.file.filename}` : undefined,
+        fotoPerfil: req.file ? fileToBase64(req.file) : undefined,
       });
       const resultado = await authService.cadastrar(dto);
       res.status(201).json(resultado);
@@ -77,7 +78,7 @@ export const authController = {
     try {
       const dados = atualizarPerfilSchema.parse({
         ...req.body,
-        fotoPerfil: req.file ? `/uploads/${req.file.filename}` : req.body.fotoPerfil || undefined,
+        fotoPerfil: req.file ? fileToBase64(req.file) : req.body.fotoPerfil || undefined,
       });
       const resultado = await authService.atualizarPerfil(req.usuario!.id, dados);
       res.json(resultado);

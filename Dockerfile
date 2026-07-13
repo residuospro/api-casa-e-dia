@@ -20,13 +20,13 @@ RUN apt-get update -y && apt-get install -y openssl ca-certificates && rm -rf /v
 
 WORKDIR /app
 
-RUN mkdir -p /app/uploads
-
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/serviceAccountKey.json ./serviceAccountKey.json
+
+RUN mkdir -p /app/uploads
 
 EXPOSE 3000
 
