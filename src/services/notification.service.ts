@@ -109,11 +109,11 @@ export class NotificationService {
 
     if (notificacao.dados) {
       if (notificacao.dados.tarefaId) {
-        url = `/tarefas/${notificacao.dados.tarefaId}`;
+        url = `/minhas-tarefas/visualizar-tarefa?id=${notificacao.dados.tarefaId}`;
       } else if (notificacao.dados.cicloId) {
-        url = `/ciclos/${notificacao.dados.cicloId}`;
+        url = `/ciclos/novo-ciclo?id=${notificacao.dados.cicloId}`;
       } else if (notificacao.dados.familiaId) {
-        url = `/familia/${notificacao.dados.familiaId}`;
+        url = `/minha-familia`;
       }
     }
 
