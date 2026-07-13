@@ -11,6 +11,7 @@ router.get('/:familiaId/tarefas/urgentes', authMiddleware, tarefaController.urge
 router.get('/:familiaId/tarefas/:id', authMiddleware, tarefaController.obter);
 router.put('/:familiaId/tarefas/:id', authMiddleware, tarefaController.atualizar);
 router.delete('/:familiaId/tarefas/:id', authMiddleware, tarefaController.remover);
+router.post('/:familiaId/tarefas/:id/duplicar', authMiddleware, tarefaController.duplicar);
 router.post('/:familiaId/tarefas/:id/concluir', authMiddleware, tarefaController.concluir);
 router.post('/:familiaId/execucoes/:execucaoId/concluir', authMiddleware, tarefaController.concluirExecucao);
 router.post('/:familiaId/execucoes/:execucaoId/cancelar', authMiddleware, tarefaController.cancelarExecucao);

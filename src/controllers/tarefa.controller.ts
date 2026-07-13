@@ -222,4 +222,24 @@ export const tarefaController = {
       next(err);
     }
   },
+
+  async duplicar(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { familiaId, id } = req.params;
+
+      const membro = await familyRepository.findMembroByUsuarioAndFamilia(
+        req.usuario!.id,
+        familiaId,
+      );
+      if (!membro) {
+        res.status(403).json({ error: 'Forbidden', message: 'Você não é membro desta família' });
+        return;
+      }
+
+      const resultado = await tarefaService.duplicar(familiaId, id, membro.id);
+      res.status(201).json(resultado);
+    } catch (err) {
+      next(err);
+    }
+  },
 };

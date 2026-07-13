@@ -2,7 +2,7 @@ import { tarefaRepository } from '../repositories/tarefa.repository';
 import { familyRepository } from '../repositories/family.repository';
 import { cicloRepository } from '../repositories/ciclo.repository';
 import { AppError } from './auth.service';
-import { TipoTarefa, ModoDistribuicao, StatusExecucao, NotificacaoTipo } from '../models/enums';
+import { TipoTarefa, ModoDistribuicao, StatusExecucao, NotificacaoTipo, Categoria } from '../models/enums';
 import { generateAvatar } from '../utils/avatar';
 import {
   CriarTarefaDTO,
@@ -459,6 +459,34 @@ export class TarefaService {
       execucoesAtrasadas,
       ciclos,
     };
+  }
+
+  async duplicar(familiaId: string, tarefaId: string, criadoPorId: string) {
+    const original = await tarefaRepository.findById(tarefaId);
+    if (!original || original.familiaId !== familiaId) {
+      throw new AppError('Tarefa não encontrada', 404);
+    }
+
+    const nova = await tarefaRepository.create({
+      familiaId,
+      titulo: original.titulo,
+      descricao: original.descricao,
+      tipo: original.tipo as TipoTarefa,
+      categoria: original.categoria as Categoria,
+      modoDistribuicao: original.modoDistribuicao as ModoDistribuicao | null,
+      responsavelAtualId: original.responsavelAtualId,
+      pontos: original.pontos,
+      cicloId: original.cicloId,
+      criadoPorId,
+      execucoes: original.execucoes.map((e) => ({
+        data: e.data,
+        status: e.status as StatusExecucao,
+        pontosObtidos: e.pontosObtidos,
+        iteracao: e.iteracao,
+      })),
+    });
+
+    return transformResponsavel(nova);
   }
 }
 
