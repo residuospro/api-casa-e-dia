@@ -65,10 +65,13 @@ export function gerarExecucoesRecorrentes(
   diasAFrente: number = 7,
 ): { data: Date; status: StatusExecucao }[] {
   const hoje = dataRef ?? new Date();
-  const inicio = recorrencia.dataInicio ? new Date(recorrencia.dataInicio) : new Date(hoje);
-  inicio.setHours(0, 0, 0, 0);
+  hoje.setHours(0, 0, 0, 0);
+  const inicioRef = recorrencia.dataInicio ? new Date(recorrencia.dataInicio) : new Date(hoje);
+  inicioRef.setHours(0, 0, 0, 0);
 
-  const fim = new Date(inicio);
+  const inicioIteracao = new Date(Math.max(hoje.getTime(), inicioRef.getTime()));
+
+  const fim = new Date(inicioIteracao);
   fim.setDate(fim.getDate() + diasAFrente);
 
   if (recorrencia.dataFim) {
@@ -79,7 +82,7 @@ export function gerarExecucoesRecorrentes(
   }
 
   const execucoes: { data: Date; status: StatusExecucao }[] = [];
-  const atual = new Date(inicio);
+  const atual = new Date(inicioIteracao);
 
   while (atual <= fim) {
     let deveGerar = false;
@@ -89,7 +92,7 @@ export function gerarExecucoesRecorrentes(
         deveGerar = true;
         break;
       case FrequenciaRecorrencia.DIA_SIM_DIA_NAO:
-        deveGerar = ehDiaSimDiaNao(inicio, atual);
+        deveGerar = ehDiaSimDiaNao(inicioRef, atual);
         break;
       case FrequenciaRecorrencia.DIAS_IMPARES:
         deveGerar = diaDoMesEhImpar(atual);
