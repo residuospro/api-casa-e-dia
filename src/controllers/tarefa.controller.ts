@@ -103,6 +103,14 @@ export const tarefaController = {
     try {
       const { familiaId, id } = req.params;
       const dados = atualizarTarefaSchema.parse(req.body);
+
+      if (dados.execucoes) {
+        dados.execucoes = dados.execucoes.map((e) => ({
+          ...e,
+          data: new Date(e.data as any),
+        }));
+      }
+
       const resultado = await tarefaService.atualizar(familiaId, id, dados);
       res.json(resultado);
     } catch (err) {
