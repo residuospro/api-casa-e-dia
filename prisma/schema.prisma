@@ -59,6 +59,13 @@ enum StatusExecucao {
   CANCELADA
 }
 
+enum FrequenciaRecorrencia {
+  DIARIO
+  DIA_SIM_DIA_NAO
+  DIAS_IMPARES
+  DIAS_PARES
+}
+
 enum ConviteStatus {
   PENDENTE
   ACEITO
@@ -195,6 +202,7 @@ model Tarefa {
   ativo              Boolean           @default(true)
   criadoPorId        String
   cicloIteracao      Int?
+  recorrencia       Json?
   criadoEm           DateTime          @default(now())
   atualizadoEm       DateTime          @updatedAt
   familia            Familia           @relation(fields: [familiaId], references: [id], onDelete: Cascade)
@@ -203,6 +211,9 @@ model Tarefa {
   criadoPor          MembroFamilia     @relation("criadorTarefa", fields: [criadoPorId], references: [id])
   execucoes          ExecucaoTarefa[]
 
+  @@index([familiaId, ativo])
+  @@index([cicloId])
+  @@index([responsavelAtualId])
   @@map("tarefas")
 }
 
@@ -221,5 +232,7 @@ model ExecucaoTarefa {
   tarefa               Tarefa         @relation(fields: [tarefaId], references: [id], onDelete: Cascade)
   concluidoPor         MembroFamilia? @relation("execucoesConcluidas", fields: [concluidoPorId], references: [id])
 
+  @@index([tarefaId])
+  @@index([status, data])
   @@map("execucoes_tarefa")
 }

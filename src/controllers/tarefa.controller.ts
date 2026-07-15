@@ -27,6 +27,7 @@ export const tarefaController = {
         concluidoPorId: e.concluidoPorId,
         concluidoEm: e.concluidoEm ? new Date(e.concluidoEm) : null,
         notificacaoCriada: e.notificacaoCriada,
+        iteracao: e.iteracao,
       })) ?? null;
 
       const resultado = await tarefaService.criar({
@@ -41,6 +42,7 @@ export const tarefaController = {
         cicloId: dados.cicloId,
         familiaId,
         criadoPorId: membro.id,
+        recorrencia: dados.recorrencia ?? undefined,
         execucoes,
       });
 

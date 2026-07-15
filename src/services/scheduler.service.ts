@@ -52,6 +52,7 @@ export class SchedulerService {
       const horario = execucao.data.toLocaleTimeString('pt-BR', {
         hour: '2-digit',
         minute: '2-digit',
+        timeZone: 'America/Sao_Paulo',
       });
 
       const titulo = `Tarefa vence hoje: ${tarefa.titulo}`;
@@ -95,7 +96,7 @@ export class SchedulerService {
       if (!destinatario) continue;
 
       const titulo = `Tarefa atrasada: ${tarefa.titulo}`;
-      const mensagem = `A tarefa "${tarefa.titulo}" está atrasada! O prazo venceu no dia ${execucao.data.toLocaleDateString('pt-BR')}. Corra para concluí-la.`;
+      const mensagem = `A tarefa "${tarefa.titulo}" está atrasada! O prazo venceu no dia ${execucao.data.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}. Corra para concluí-la.`;
 
       const dados = JSON.stringify({
         execucaoId: execucao.id,

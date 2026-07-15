@@ -48,3 +48,10 @@ export enum StatusExecucao {
   ATRASADA = 'ATRASADA',
   CANCELADA = 'CANCELADA',
 }
+
+export enum FrequenciaRecorrencia {
+  DIARIO = 'DIARIO',
+  DIA_SIM_DIA_NAO = 'DIA_SIM_DIA_NAO',
+  DIAS_IMPARES = 'DIAS_IMPARES',
+  DIAS_PARES = 'DIAS_PARES',
+}

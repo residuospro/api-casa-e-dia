@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { TipoTarefa, Categoria, ModoDistribuicao, StatusExecucao } from '../models/enums';
+import { TipoTarefa, Categoria, ModoDistribuicao, StatusExecucao, FrequenciaRecorrencia } from '../models/enums';
 
 const execucaoSchema = z.object({
   id: z.string().optional(),
@@ -9,6 +9,14 @@ const execucaoSchema = z.object({
   concluidoPorId: z.string().nullable().optional(),
   concluidoEm: z.string().datetime().nullable().optional(),
   notificacaoCriada: z.boolean().optional(),
+  iteracao: z.number().int().nullable().optional(),
+});
+
+const recorrenciaSchema = z.object({
+  frequencia: z.nativeEnum(FrequenciaRecorrencia),
+  horarios: z.array(z.string().regex(/^\d{2}:\d{2}$/, 'Horário deve ter formato HH:mm')).min(1, 'Pelo menos um horário é obrigatório'),
+  dataInicio: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).or(z.date()).optional(),
+  dataFim: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).or(z.date()).nullable().optional(),
 });
 
 export const criarTarefaSchema = z.object({
@@ -21,6 +29,7 @@ export const criarTarefaSchema = z.object({
   atribuirAutomaticamente: z.boolean().optional(),
   pontos: z.number().int().min(0).optional(),
   cicloId: z.string().nullable().optional(),
+  recorrencia: recorrenciaSchema.nullable().optional(),
   execucoes: z.array(execucaoSchema).nullable().optional(),
 });
 
@@ -34,6 +43,7 @@ export const atualizarTarefaSchema = z.object({
   pontos: z.number().int().min(0).nullable().optional(),
   ativo: z.boolean().nullable().optional(),
   cicloId: z.string().nullable().optional(),
+  recorrencia: recorrenciaSchema.nullable().optional(),
   execucoes: z.array(execucaoSchema).nullable().optional(),
 });
 

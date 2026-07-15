@@ -2,11 +2,12 @@ import { tarefaRepository } from '../repositories/tarefa.repository';
 import { familyRepository } from '../repositories/family.repository';
 import { cicloRepository } from '../repositories/ciclo.repository';
 import { AppError } from './auth.service';
-import { TipoTarefa, ModoDistribuicao, StatusExecucao, NotificacaoTipo, Categoria } from '../models/enums';
+import { TipoTarefa, ModoDistribuicao, StatusExecucao, NotificacaoTipo, FrequenciaRecorrencia, Categoria } from '../models/enums';
 import { generateAvatar } from '../utils/avatar';
 import {
   CriarTarefaDTO,
   AtualizarTarefaDTO,
+  Recorrencia,
 } from '../models/tarefa.model';
 import { notificationService } from './notification.service';
 
@@ -31,6 +32,115 @@ export async function renovarExecucoesTarefa(
   }
 
   await tarefaRepository.createExecucoes(tarefaId, novas);
+}
+
+function diaDoMes(data: Date): number {
+  return data.getDate();
+}
+
+function diaDoMesEhPar(data: Date): boolean {
+  return diaDoMes(data) % 2 === 0;
+}
+
+function diaDoMesEhImpar(data: Date): boolean {
+  return diaDoMes(data) % 2 !== 0;
+}
+
+function ehDiaSimDiaNao(dataInicio: Date, dataAtual: Date): boolean {
+  const diffMs = dataAtual.getTime() - dataInicio.getTime();
+  const diffDias = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+  return diffDias % 2 !== 0;
+}
+
+function parseHorario(horario: string, data: Date): Date {
+  const [horas, minutos] = horario.split(':').map(Number);
+  const resultado = new Date(data);
+  resultado.setHours(horas, minutos, 0, 0);
+  return resultado;
+}
+
+export function gerarExecucoesRecorrentes(
+  recorrencia: Recorrencia,
+  dataRef?: Date,
+  diasAFrente: number = 7,
+): { data: Date; status: StatusExecucao }[] {
+  const hoje = dataRef ?? new Date();
+  const inicio = recorrencia.dataInicio ? new Date(recorrencia.dataInicio) : new Date(hoje);
+  inicio.setHours(0, 0, 0, 0);
+
+  const fim = new Date(inicio);
+  fim.setDate(fim.getDate() + diasAFrente);
+
+  if (recorrencia.dataFim) {
+    const dataFim = new Date(recorrencia.dataFim);
+    if (dataFim < fim) {
+      fim.setTime(dataFim.getTime());
+    }
+  }
+
+  const execucoes: { data: Date; status: StatusExecucao }[] = [];
+  const atual = new Date(inicio);
+
+  while (atual <= fim) {
+    let deveGerar = false;
+
+    switch (recorrencia.frequencia) {
+      case FrequenciaRecorrencia.DIARIO:
+        deveGerar = true;
+        break;
+      case FrequenciaRecorrencia.DIA_SIM_DIA_NAO:
+        deveGerar = ehDiaSimDiaNao(inicio, atual);
+        break;
+      case FrequenciaRecorrencia.DIAS_IMPARES:
+        deveGerar = diaDoMesEhImpar(atual);
+        break;
+      case FrequenciaRecorrencia.DIAS_PARES:
+        deveGerar = diaDoMesEhPar(atual);
+        break;
+    }
+
+    if (deveGerar) {
+      for (const horario of recorrencia.horarios) {
+        execucoes.push({
+          data: parseHorario(horario, atual),
+          status: StatusExecucao.AGENDADA,
+        });
+      }
+    }
+
+    atual.setDate(atual.getDate() + 1);
+  }
+
+  return execucoes;
+}
+
+function calcularDataLimiteCiclo(ciclo: { inicio: Date; proximaRenovacao: Date | null }): Date {
+  return ciclo.proximaRenovacao
+    ? new Date(ciclo.proximaRenovacao)
+    : new Date(ciclo.inicio);
+}
+
+function validarDatasExecucoes(
+  execucoes: { data: Date }[],
+  ciclo: { inicio: Date; proximaRenovacao: Date | null } | null,
+): void {
+  if (!execucoes || execucoes.length === 0) return;
+
+  const agora = new Date();
+
+  for (const execucao of execucoes) {
+    if (ciclo) {
+      const limiteInferior = calcularDataLimiteCiclo(ciclo);
+      if (execucao.data < limiteInferior) {
+        const nomeLimite = ciclo.proximaRenovacao ? 'renovação' : 'início';
+        throw new AppError(`Execução com data anterior ao ${nomeLimite} do ciclo`, 400);
+      }
+    } else {
+      if (execucao.data < agora) {
+        throw new AppError('Execução com data no passado', 400);
+      }
+    }
+  }
 }
 
 function transformResponsavel(tarefa: any) {
@@ -62,6 +172,13 @@ export class TarefaService {
 
     let cicloRevezamento: Awaited<ReturnType<typeof cicloRepository.findById>> | null = null;
 
+    if (dto.cicloId) {
+      cicloRevezamento = await cicloRepository.findById(dto.cicloId);
+      if (!cicloRevezamento) {
+        throw new AppError('Ciclo não encontrado', 404);
+      }
+    }
+
     if (dto.tipo === TipoTarefa.FAMILIAR) {
       if (dto.modoDistribuicao === ModoDistribuicao.FIXA && !dto.responsavelAtualId) {
         throw new AppError('Tarefa fixa deve ter um responsável', 400);
@@ -71,8 +188,6 @@ export class TarefaService {
         if (!dto.cicloId) {
           throw new AppError('Tarefa de revezamento deve ter um ciclo', 400);
         }
-
-        cicloRevezamento = await cicloRepository.findById(dto.cicloId);
         if (!cicloRevezamento) {
           throw new AppError('Ciclo não encontrado', 404);
         }
@@ -112,13 +227,47 @@ export class TarefaService {
               throw new AppError('Execução com data após o vencimento do ciclo', 400);
             }
           }
+
+          validarDatasExecucoes(
+            dto.execucoes.map((e) => ({ data: e.data })),
+            cicloRevezamento,
+          );
         }
       }
     }
 
-    const execucoesComIteracao = dto.execucoes?.map((e) => ({
+    let execucoesFinais = dto.execucoes;
+
+    if (dto.recorrencia) {
+      if (cicloRevezamento) {
+        const limiteInferior = cicloRevezamento.proximaRenovacao
+          ? new Date(cicloRevezamento.proximaRenovacao)
+          : new Date(cicloRevezamento.inicio);
+
+        const dataInicioRecorrencia = dto.recorrencia.dataInicio
+          ? new Date(dto.recorrencia.dataInicio)
+          : new Date();
+
+        if (dataInicioRecorrencia < limiteInferior) {
+          const nomeLimite = cicloRevezamento.proximaRenovacao ? 'renovação' : 'início';
+          throw new AppError(`Recorrência com data anterior ao ${nomeLimite} do ciclo`, 400);
+        }
+      }
+
+      const geradas = gerarExecucoesRecorrentes(dto.recorrencia, undefined, 7);
+      const agora = new Date();
+      const futuras = geradas.filter((e) => e.data >= agora);
+      validarDatasExecucoes(futuras, cicloRevezamento);
+      execucoesFinais = futuras.map((e) => ({
+        data: e.data,
+        status: e.status,
+        pontosObtidos: null,
+      }));
+    }
+
+    const execucoesComIteracao = execucoesFinais?.map((e) => ({
       ...e,
-      iteracao: e.iteracao ?? cicloRevezamento?.iteracao ?? null,
+      iteracao: e.iteracao ?? cicloRevezamento?.iteracao ?? dto.cicloIteracao ?? 0,
     }));
 
     const tarefa = await tarefaRepository.create({
@@ -168,8 +317,6 @@ export class TarefaService {
     if (!familia) {
       throw new AppError('Família não encontrada', 404);
     }
-
-    await tarefaRepository.atualizarExecucoesAtrasadas(familiaId);
 
     const filtro = options.filtro ? { ...options.filtro } : {};
 
@@ -236,6 +383,31 @@ export class TarefaService {
       throw new AppError('Tarefa fixa deve ter um responsável', 400);
     }
 
+    if (dto.cicloId !== undefined && dto.cicloId !== tarefa.cicloId) {
+      const ultimaExecucao = tarefa.execucoes?.length
+        ? tarefa.execucoes.reduce((maisRecente, e) => {
+            const dataE = new Date(e.data);
+            return dataE > maisRecente ? dataE : maisRecente;
+          }, new Date(0))
+        : null;
+
+      if (ultimaExecucao && ultimaExecucao.getTime() > 0) {
+        const cicloNovo = await cicloRepository.findById(String(dto.cicloId));
+        if (cicloNovo) {
+          const fimCiclo = cicloNovo.proximaRenovacao
+            ? new Date(cicloNovo.proximaRenovacao)
+            : new Date(cicloNovo.inicio.getTime() + cicloNovo.duracaoDias * 24 * 60 * 60 * 1000);
+
+          if (fimCiclo < ultimaExecucao) {
+            throw new AppError(
+              `O ciclo escolhido vence em ${fimCiclo.toLocaleDateString('pt-BR')}, mas a última execução desta tarefa é em ${ultimaExecucao.toLocaleDateString('pt-BR')}. Escolha um ciclo com duração suficiente.`,
+              400,
+            );
+          }
+        }
+      }
+    }
+
     if (dto.execucoes) {
       const execucoesExistentes = await tarefaRepository.findExecucoesByTarefa(tarefaId);
       const iteracaoPorId = new Map(execucoesExistentes.map((e: any) => [e.id, e.iteracao]));
@@ -246,6 +418,49 @@ export class TarefaService {
         }
         return { ...e, iteracao: e.iteracao ?? tarefa.cicloIteracao ?? null };
       });
+    }
+
+    if (dto.recorrencia !== undefined) {
+      const recorrenciaAntiga = tarefa.recorrencia as Recorrencia | null;
+      const recorrenciaNova = dto.recorrencia;
+
+      const mudou = JSON.stringify(recorrenciaAntiga) !== JSON.stringify(recorrenciaNova);
+
+      if (mudou && recorrenciaNova) {
+        let cicloTarefa: { inicio: Date; proximaRenovacao: Date | null } | null = null;
+        if (tarefa.cicloId) {
+          cicloTarefa = await cicloRepository.findById(tarefa.cicloId) as any;
+        }
+
+        let diasAFrente = 7;
+        if (cicloTarefa) {
+          const fimCiclo = cicloTarefa.proximaRenovacao
+            ? new Date(cicloTarefa.proximaRenovacao)
+            : new Date(cicloTarefa.inicio.getTime() + (cicloTarefa as any).duracaoDias * 24 * 60 * 60 * 1000);
+          const agora = new Date();
+          const diffMs = fimCiclo.getTime() - agora.getTime();
+          diasAFrente = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+        }
+
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        await tarefaRepository.deleteFutureAgendadas(tarefaId, hoje);
+
+        const geradas = gerarExecucoesRecorrentes(recorrenciaNova, hoje, diasAFrente);
+        const agoraAtualizar = new Date();
+        const futurasAtualizar = geradas.filter((e) => e.data >= agoraAtualizar);
+        validarDatasExecucoes(futurasAtualizar, cicloTarefa);
+        if (futurasAtualizar.length > 0) {
+          await tarefaRepository.createExecucoes(
+            tarefaId,
+            futurasAtualizar.map((e) => ({ data: e.data, status: e.status, iteracao: 0 })),
+          );
+        }
+
+        delete dto.execucoes;
+      } else if (mudou && !recorrenciaNova) {
+        delete dto.execucoes;
+      }
     }
 
     const resultado = await tarefaRepository.update(tarefaId, dto);
@@ -368,6 +583,13 @@ export class TarefaService {
       throw new AppError('Execução não encontrada', 404);
     }
 
+    let cicloTarefa: { inicio: Date; proximaRenovacao: Date | null } | null = null;
+    if (execucao.tarefa.cicloId) {
+      cicloTarefa = await cicloRepository.findById(execucao.tarefa.cicloId) as any;
+    }
+
+    validarDatasExecucoes([{ data }], cicloTarefa);
+
     await tarefaRepository.updateExecucao(execucaoId, { data });
 
     return {
@@ -477,6 +699,8 @@ export class TarefaService {
       responsavelAtualId: original.responsavelAtualId,
       pontos: original.pontos,
       cicloId: original.cicloId,
+      cicloIteracao: original.cicloIteracao,
+      recorrencia: (original.recorrencia as unknown as Recorrencia) ?? undefined,
       criadoPorId,
       execucoes: original.execucoes.map((e) => ({
         data: e.data,

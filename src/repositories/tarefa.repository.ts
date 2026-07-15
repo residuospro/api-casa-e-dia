@@ -1,4 +1,5 @@
 import prisma from '../config/database';
+import { Prisma } from '../generated/prisma-client';
 import { CriarTarefaDTO, AtualizarTarefaDTO, AtualizarExecucaoDTO } from '../models/tarefa.model';
 import { StatusExecucao } from '../models/enums';
 
@@ -23,6 +24,26 @@ const tarefaInclude = {
   },
 };
 
+const tarefaListInclude = {
+  execucoes: {
+    orderBy: { data: 'asc' as const },
+    where: { status: { in: [StatusExecucao.AGENDADA, StatusExecucao.ATRASADA] } },
+    select: { id: true, data: true, status: true, pontosObtidos: true, iteracao: true },
+  },
+  ciclo: { select: { id: true, nome: true, iteracao: true } },
+  responsavelAtual: {
+    select: {
+      id: true,
+      nome: true,
+      fotoPerfil: true,
+      genero: true,
+      usuario: {
+        select: { id: true, nome: true, fotoPerfil: true, genero: true },
+      },
+    },
+  },
+};
+
 function cleanUpdateData(data: Record<string, unknown>): Record<string, unknown> {
   const nullableFields = new Set([
     'cicloId',
@@ -41,12 +62,13 @@ function cleanUpdateData(data: Record<string, unknown>): Record<string, unknown>
 
 export const tarefaRepository = {
   create(data: CriarTarefaDTO & { criadoPorId: string }) {
-    const { execucoes, atribuirAutomaticamente, ...tarefaData } = data;
+    const { execucoes, atribuirAutomaticamente, recorrencia, ...tarefaData } = data;
 
     return prisma.tarefa.create({
       data: {
         ...tarefaData,
         pontos: tarefaData.pontos ?? 0,
+        recorrencia: recorrencia === null ? Prisma.DbNull : recorrencia ? (recorrencia as unknown as Prisma.InputJsonObject) : undefined,
         execucoes: execucoes
           ? {
               create: execucoes.map((e) => ({
@@ -180,7 +202,7 @@ export const tarefaRepository = {
     const [data, total] = await Promise.all([
       prisma.tarefa.findMany({
         where: where as any,
-        include: tarefaInclude,
+        include: tarefaListInclude,
         orderBy,
         skip,
         take: options.porPagina,
@@ -262,6 +284,16 @@ export const tarefaRepository = {
     return prisma.execucaoTarefa.findMany({
       where: { tarefaId },
       orderBy: { data: 'asc' },
+    });
+  },
+
+  deleteFutureAgendadas(tarefaId: string, desde: Date) {
+    return prisma.execucaoTarefa.deleteMany({
+      where: {
+        tarefaId,
+        status: 'AGENDADA',
+        data: { gte: desde },
+      },
     });
   },
 
@@ -430,6 +462,49 @@ export const tarefaRepository = {
         status,
         tarefa: { familiaId, ativo: true },
       },
+    });
+  },
+
+  findTarefasComRecorrencia() {
+    return prisma.tarefa.findMany({
+      where: {
+        ativo: true,
+        recorrencia: { not: Prisma.DbNull },
+      },
+      select: {
+        id: true,
+        recorrencia: true,
+        cicloId: true,
+        ciclo: {
+          select: {
+            inicio: true,
+            duracaoDias: true,
+            proximaRenovacao: true,
+          },
+        },
+      },
+    });
+  },
+
+  countExecucoesFuturas(tarefaId: string, desde: Date) {
+    return prisma.execucaoTarefa.count({
+      where: {
+        tarefaId,
+        status: 'AGENDADA',
+        data: { gte: desde },
+      },
+    });
+  },
+
+  findUltimaExecucaoFutura(tarefaId: string, desde: Date) {
+    return prisma.execucaoTarefa.findFirst({
+      where: {
+        tarefaId,
+        status: 'AGENDADA',
+        data: { gte: desde },
+      },
+      orderBy: { data: 'desc' },
+      select: { data: true },
     });
   },
 };

@@ -11,6 +11,7 @@ import { env } from './config/env';
 import { initSocket } from './socket';
 import { initScheduler } from './scheduler';
 import { initCycleScheduler } from './scheduler/cycle';
+import { initRecorrenciaScheduler } from './scheduler/recorrencia';
 import { initializeApp, cert } from 'firebase-admin/app';
 import type { ServiceAccount } from 'firebase-admin';
 
@@ -24,7 +25,7 @@ initializeApp({
 });
 
 app.use(cors({ origin: env.frontendUrl, credentials: true }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 app.use(routes);
 app.use('/uploads', uploadRoutes);
@@ -35,6 +36,7 @@ const httpServer = http.createServer(app);
 initSocket(httpServer);
 initScheduler();
 initCycleScheduler();
+initRecorrenciaScheduler();
 
 httpServer.listen(env.port, () => {
   console.log(`Servidor rodando na porta ${env.port}`);

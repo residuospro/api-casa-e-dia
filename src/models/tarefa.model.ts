@@ -1,4 +1,11 @@
-import { TipoTarefa, Categoria, ModoDistribuicao, StatusExecucao } from './enums';
+import { TipoTarefa, Categoria, ModoDistribuicao, StatusExecucao, FrequenciaRecorrencia } from './enums';
+
+export interface Recorrencia {
+  frequencia: FrequenciaRecorrencia;
+  horarios: string[];
+  dataInicio?: string | Date;
+  dataFim?: string | Date | null;
+}
 
 export interface Tarefa {
   id: string;
@@ -14,6 +21,7 @@ export interface Tarefa {
   ativo: boolean;
   criadoPorId: string;
   cicloIteracao: number | null;
+  recorrencia: Recorrencia | null;
   criadoEm: Date;
   atualizadoEm: Date;
 }
@@ -42,6 +50,7 @@ export interface CriarTarefaDTO {
   pontos?: number;
   criadoPorId: string;
   cicloIteracao?: number | null;
+  recorrencia?: Recorrencia | null;
   execucoes?: CriarExecucaoDTO[] | null;
 }
 
@@ -63,6 +72,7 @@ export interface AtualizarTarefaDTO {
   responsavelAtualId?: string | null;
   pontos?: number | null;
   ativo?: boolean | null;
+  recorrencia?: Recorrencia | null;
   execucoes?: AtualizarExecucaoDTO[] | null;
 }
 
