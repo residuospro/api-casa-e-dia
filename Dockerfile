@@ -16,6 +16,8 @@ RUN pnpm run build && cp -r src/generated dist/generated
 
 FROM node:22-slim AS runner
 
+ENV TZ=America/Sao_Paulo
+
 RUN apt-get update -y && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
