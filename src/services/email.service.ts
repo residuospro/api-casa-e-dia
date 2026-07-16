@@ -12,8 +12,6 @@ const transporter = nodemailer.createTransport({
 });
 
 export async function sendInviteEmail(to: string, nome: string, nomeFamilia: string) {
-  console.log('aquui');
-
   const link = `${env.frontendUrl}/notificacao`;
 
   const info = await transporter.sendMail({
