@@ -15,10 +15,33 @@ const responsavelAtualInclude = {
   },
 };
 
+const executorInclude = {
+  select: {
+    id: true,
+    nome: true,
+    fotoPerfil: true,
+    genero: true,
+    usuario: {
+      select: { id: true, nome: true, fotoPerfil: true, genero: true },
+    },
+  },
+};
+
+const participanteInclude = {
+  select: {
+    id: true,
+    membro: responsavelAtualInclude,
+  },
+};
+
 const tarefaInclude = {
-  execucoes: { orderBy: { data: 'asc' as const } },
+  execucoes: {
+    orderBy: { data: 'asc' as const },
+    include: { executor: executorInclude },
+  },
   ciclo: { select: { id: true, nome: true, iteracao: true } },
   responsavelAtual: responsavelAtualInclude,
+  participantes: participanteInclude,
   criadoPor: {
     select: { id: true, nome: true, fotoPerfil: true },
   },
@@ -28,7 +51,7 @@ const tarefaListInclude = {
   execucoes: {
     orderBy: { data: 'asc' as const },
     where: { status: { in: [StatusExecucao.AGENDADA, StatusExecucao.ATRASADA] } },
-    select: { id: true, data: true, status: true, pontosObtidos: true, iteracao: true },
+    select: { id: true, data: true, status: true, pontosObtidos: true, iteracao: true, executor: executorInclude },
   },
   ciclo: { select: { id: true, nome: true, iteracao: true } },
   responsavelAtual: {
@@ -40,6 +63,12 @@ const tarefaListInclude = {
       usuario: {
         select: { id: true, nome: true, fotoPerfil: true, genero: true },
       },
+    },
+  },
+  participantes: {
+    select: {
+      id: true,
+      membro: responsavelAtualInclude,
     },
   },
 };
@@ -62,7 +91,7 @@ function cleanUpdateData(data: Record<string, unknown>): Record<string, unknown>
 
 export const tarefaRepository = {
   create(data: CriarTarefaDTO & { criadoPorId: string }) {
-    const { execucoes, atribuirAutomaticamente, recorrencia, ...tarefaData } = data;
+    const { execucoes, atribuirAutomaticamente, recorrencia, participantesId, ...tarefaData } = data;
 
     return prisma.tarefa.create({
       data: {
@@ -76,7 +105,13 @@ export const tarefaRepository = {
                 status: e.status,
                 pontosObtidos: e.pontosObtidos,
                 ...(e.iteracao !== undefined ? { iteracao: e.iteracao } : {}),
+                ...(e.executorId !== undefined ? { executorId: e.executorId } : {}),
               })),
+            }
+          : undefined,
+        participantes: participantesId && participantesId.length > 0
+          ? {
+              create: participantesId.map((membroId) => ({ membroId })),
             }
           : undefined,
       },
@@ -175,6 +210,12 @@ export const tarefaRepository = {
           } else {
             where.cicloId = ids.length === 1 ? ids[0] : { in: ids };
           }
+        } else if (key === 'responsavelAtualId') {
+          const orConditions: Record<string, unknown>[] = arrValue.map((id) => ({ responsavelAtualId: id }));
+          for (const id of arrValue) {
+            orConditions.push({ participantes: { some: { membroId: id } } });
+          }
+          where.OR = [...(Array.isArray(where.OR) ? where.OR : []), ...orConditions];
         } else {
           where[key] = arrValue.length === 1 ? arrValue[0] : { in: arrValue };
         }
@@ -214,7 +255,7 @@ export const tarefaRepository = {
   },
 
   async update(id: string, data: AtualizarTarefaDTO) {
-    const { execucoes, ...tarefaData } = data;
+    const { execucoes, participantesId, ...tarefaData } = data;
 
     const updateData = cleanUpdateData(tarefaData as unknown as Record<string, unknown>);
 
@@ -222,6 +263,15 @@ export const tarefaRepository = {
       where: { id },
       data: updateData,
     });
+
+    if (participantesId !== undefined) {
+      await prisma.participanteTarefa.deleteMany({ where: { tarefaId: id } });
+      if (participantesId && participantesId.length > 0) {
+        await prisma.participanteTarefa.createMany({
+          data: participantesId.map((membroId) => ({ tarefaId: id, membroId })),
+        });
+      }
+    }
 
     if (execucoes) {
       const idsNoDto = execucoes.filter((e) => e.id).map((e) => e.id!);
@@ -243,6 +293,7 @@ export const tarefaRepository = {
               ...(exec.status !== undefined ? { status: exec.status as any } : {}),
               ...(exec.pontosObtidos !== undefined ? { pontosObtidos: exec.pontosObtidos } : {}),
               ...(exec.iteracao !== undefined ? { iteracao: exec.iteracao } : {}),
+              ...(exec.executorId !== undefined ? { executorId: exec.executorId } : {}),
             },
           });
         } else {
@@ -253,6 +304,7 @@ export const tarefaRepository = {
               status: (exec.status ?? StatusExecucao.AGENDADA) as any,
               pontosObtidos: exec.pontosObtidos ?? null,
               ...(exec.iteracao !== undefined ? { iteracao: exec.iteracao } : {}),
+              ...(exec.executorId !== undefined ? { executorId: exec.executorId } : {}),
             },
           });
         }
@@ -297,13 +349,14 @@ export const tarefaRepository = {
     });
   },
 
-  createExecucoes(tarefaId: string, execucoes: { data: Date; status: string; iteracao?: number | null }[]) {
+  createExecucoes(tarefaId: string, execucoes: { data: Date; status: string; iteracao?: number | null; executorId?: string | null }[]) {
     return prisma.execucaoTarefa.createMany({
       data: execucoes.map((e) => ({
         tarefaId,
         data: e.data,
         status: e.status as any,
         ...(e.iteracao !== undefined ? { iteracao: e.iteracao } : {}),
+        ...(e.executorId !== undefined ? { executorId: e.executorId } : {}),
       })),
     } as any);
   },
@@ -326,6 +379,7 @@ export const tarefaRepository = {
       concluidoPorId?: string | null;
       concluidoEm?: Date | null;
       data?: Date;
+      executorId?: string | null;
     },
   ) {
     return prisma.execucaoTarefa.update({

@@ -35,6 +35,7 @@ export interface CriarExecucaoDTO {
   concluidoEm?: Date | null;
   notificacaoCriada?: boolean;
   iteracao?: number | null;
+  executorId?: string | null;
 }
 
 export interface CriarTarefaDTO {
@@ -46,6 +47,7 @@ export interface CriarTarefaDTO {
   categoria: Categoria;
   modoDistribuicao?: ModoDistribuicao | null;
   responsavelAtualId?: string | null;
+  participantesId?: string[] | null;
   atribuirAutomaticamente?: boolean;
   pontos?: number;
   criadoPorId: string;
@@ -60,6 +62,7 @@ export interface AtualizarExecucaoDTO {
   status?: StatusExecucao;
   pontosObtidos?: number | null;
   iteracao?: number | null;
+  executorId?: string | null;
 }
 
 export interface AtualizarTarefaDTO {
@@ -70,6 +73,7 @@ export interface AtualizarTarefaDTO {
   categoria?: Categoria | null;
   modoDistribuicao?: ModoDistribuicao | null;
   responsavelAtualId?: string | null;
+  participantesId?: string[] | null;
   pontos?: number | null;
   ativo?: boolean | null;
   recorrencia?: Recorrencia | null;

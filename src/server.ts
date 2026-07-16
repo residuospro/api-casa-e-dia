@@ -25,7 +25,7 @@ initializeApp({
 });
 
 app.use(cors({ origin: env.frontendUrl, credentials: true }));
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '50mb' }));
 
 app.use(routes);
 app.use('/uploads', uploadRoutes);

@@ -10,6 +10,7 @@ const execucaoSchema = z.object({
   concluidoEm: z.string().datetime().nullable().optional(),
   notificacaoCriada: z.boolean().optional(),
   iteracao: z.number().int().nullable().optional(),
+  executorId: z.string().nullable().optional(),
 });
 
 const recorrenciaSchema = z.object({
@@ -26,6 +27,7 @@ export const criarTarefaSchema = z.object({
   categoria: z.nativeEnum(Categoria),
   modoDistribuicao: z.nativeEnum(ModoDistribuicao).nullable().optional(),
   responsavelAtualId: z.string().nullable().optional(),
+  participantesId: z.array(z.string()).nullable().optional(),
   atribuirAutomaticamente: z.boolean().optional(),
   pontos: z.number().int().min(0).optional(),
   cicloId: z.string().nullable().optional(),
@@ -40,6 +42,7 @@ export const atualizarTarefaSchema = z.object({
   categoria: z.nativeEnum(Categoria).nullable().optional(),
   modoDistribuicao: z.nativeEnum(ModoDistribuicao).nullable().optional(),
   responsavelAtualId: z.string().nullable().optional(),
+  participantesId: z.array(z.string()).nullable().optional(),
   pontos: z.number().int().min(0).nullable().optional(),
   ativo: z.boolean().nullable().optional(),
   cicloId: z.string().nullable().optional(),

@@ -28,6 +28,7 @@ export const tarefaController = {
         concluidoEm: e.concluidoEm ? new Date(e.concluidoEm) : null,
         notificacaoCriada: e.notificacaoCriada,
         iteracao: e.iteracao,
+        executorId: e.executorId ?? null,
       })) ?? null;
 
       const resultado = await tarefaService.criar({
@@ -37,6 +38,7 @@ export const tarefaController = {
         categoria: dados.categoria,
         modoDistribuicao: dados.modoDistribuicao,
         responsavelAtualId: dados.responsavelAtualId,
+        participantesId: dados.participantesId,
         atribuirAutomaticamente: dados.atribuirAutomaticamente,
         pontos: dados.pontos,
         cicloId: dados.cicloId,

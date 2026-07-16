@@ -160,6 +160,68 @@ function transformResponsavel(tarefa: any) {
   };
 }
 
+function transformParticipantes(tarefa: any) {
+  if (!tarefa.participantes || !Array.isArray(tarefa.participantes)) return tarefa;
+  const participantes = tarefa.participantes.map((pt: any) => {
+    const m = pt.membro;
+    if (!m) return null;
+    return {
+      id: m.id,
+      nome: m.nome ?? m.usuario?.nome ?? null,
+      fotoPerfil: m.fotoPerfil ?? m.usuario?.fotoPerfil ?? generateAvatar(m.nome ?? m.usuario?.nome ?? 'Sem nome', m.genero ?? m.usuario?.genero ?? null),
+      genero: m.genero ?? m.usuario?.genero ?? null,
+    };
+  }).filter(Boolean);
+  return {
+    ...tarefa,
+    participantesId: participantes.map((p: any) => p.id),
+    participantes,
+  };
+}
+
+function transformExecutor(execucao: any) {
+  if (!execucao.executor) return execucao;
+  const e = execucao.executor;
+  return {
+    ...execucao,
+    executor: {
+      id: e.id,
+      nome: e.nome ?? e.usuario?.nome ?? null,
+      fotoPerfil: e.fotoPerfil ?? e.usuario?.fotoPerfil ?? generateAvatar(e.nome ?? e.usuario?.nome ?? 'Sem nome', e.genero ?? e.usuario?.genero ?? null),
+      genero: e.genero ?? e.usuario?.genero ?? null,
+    },
+  };
+}
+
+function transformTarefa(tarefa: any) {
+  let result = transformResponsavel(tarefa);
+  result = transformParticipantes(result);
+  if (result.execucoes) {
+    result = {
+      ...result,
+      execucoes: result.execucoes.map(transformExecutor),
+    };
+  }
+  return result;
+}
+
+function atribuirExecucoes<T extends { data: Date; status?: any }>(
+  execucoes: T[],
+  responsavelId: string | null | undefined,
+  participantes: string[] | null | undefined,
+): (T & { executorId: string | null })[] {
+  if (!responsavelId || !participantes || participantes.length === 0) {
+    return execucoes.map((e) => ({ ...e, executorId: responsavelId ?? null }));
+  }
+  return execucoes.map((e, i) => {
+    if (i % 2 === 0) {
+      return { ...e, executorId: responsavelId };
+    }
+    const idx = Math.floor(i / 2) % participantes.length;
+    return { ...e, executorId: participantes[idx] };
+  });
+}
+
 export class TarefaService {
   async criar(dto: CriarTarefaDTO) {
     const familia = await familyRepository.findFamiliaById(dto.familiaId);
@@ -170,6 +232,23 @@ export class TarefaService {
     if (dto.tipo === TipoTarefa.PESSOAL) {
       if (!dto.responsavelAtualId) {
         throw new AppError('Tarefa pessoal deve ter um responsável', 400);
+      }
+      dto.participantesId = null;
+    }
+
+    if (dto.participantesId && dto.participantesId.length > 0) {
+      const membros = await familyRepository.findMembrosByFamilia(dto.familiaId);
+      const membrosAtivos = new Set(
+        membros.filter((m: any) => m.status === 'ACEITO').map((m: any) => m.id),
+      );
+      for (const membroId of dto.participantesId) {
+        if (!membrosAtivos.has(membroId)) {
+          throw new AppError(`Participante ${membroId} não é membro ativo desta família`, 400);
+        }
+      }
+      const duplicados = dto.participantesId.filter((id, i) => dto.participantesId!.indexOf(id) !== i);
+      if (duplicados.length > 0) {
+        throw new AppError('Participantes duplicados não são permitidos', 400);
       }
     }
 
@@ -273,11 +352,17 @@ export class TarefaService {
       iteracao: e.iteracao ?? cicloRevezamento?.iteracao ?? dto.cicloIteracao ?? 0,
     }));
 
+    const execucoesComExecutor = atribuirExecucoes(
+      execucoesComIteracao ?? [],
+      dto.responsavelAtualId,
+      dto.participantesId,
+    );
+
     const tarefa = await tarefaRepository.create({
       ...dto,
       pontos: dto.pontos ?? 0,
       cicloIteracao: cicloRevezamento?.iteracao,
-      execucoes: execucoesComIteracao ?? undefined,
+      execucoes: execucoesComExecutor.length > 0 ? execucoesComExecutor : undefined,
     });
 
     if (dto.responsavelAtualId && dto.responsavelAtualId !== dto.criadoPorId) {
@@ -302,7 +387,30 @@ export class TarefaService {
       }
     }
 
-    return transformResponsavel(tarefa);
+    if (dto.participantesId && dto.participantesId.length > 0) {
+      const destinatariosVistos = new Set<string>();
+      if (dto.responsavelAtualId) {
+        const membroResp = await familyRepository.findMembroById(dto.responsavelAtualId);
+        if (membroResp?.usuario?.id) destinatariosVistos.add(membroResp.usuario.id);
+      }
+
+      for (const membroId of dto.participantesId) {
+        if (destinatariosVistos.has(membroId)) continue;
+        const membro = await familyRepository.findMembroById(membroId);
+        const usuarioId = membro?.usuario?.id;
+        if (!usuarioId || destinatariosVistos.has(usuarioId)) continue;
+        destinatariosVistos.add(usuarioId);
+        await notificationService.criar({
+          usuarioId,
+          tipo: NotificacaoTipo.TAREFA_ATRIBUIDA,
+          titulo: 'Nova tarefa atribuída',
+          mensagem: `Você foi adicionado(a) como participante na tarefa "${tarefa.titulo}"`,
+          dados: JSON.stringify({ tarefaId: tarefa.id }),
+        });
+      }
+    }
+
+    return transformTarefa(tarefa);
   }
 
   async listar(
@@ -355,7 +463,7 @@ export class TarefaService {
         por_pagina: options.porPaginaResposta,
         ultima_pagina: ultimaPagina,
       },
-      data: data.map(transformResponsavel),
+      data: data.map(transformTarefa),
     };
   }
 
@@ -365,7 +473,7 @@ export class TarefaService {
       throw new AppError('Tarefa não encontrada', 404);
     }
 
-    return transformResponsavel(tarefa);
+    return transformTarefa(tarefa);
   }
 
   async atualizar(familiaId: string, tarefaId: string, dto: AtualizarTarefaDTO) {
@@ -378,10 +486,33 @@ export class TarefaService {
       throw new AppError('Tarefa pessoal deve ter um responsável', 400);
     }
 
+    const responsavelFinal = dto.responsavelAtualId !== undefined ? dto.responsavelAtualId : tarefa.responsavelAtualId;
+    const participantesFinais = dto.participantesId !== undefined ? dto.participantesId : null;
+
+    if (dto.tipo === TipoTarefa.PESSOAL) {
+      dto.participantesId = null;
+    }
+
+    if (dto.participantesId && dto.participantesId.length > 0) {
+      const membros = await familyRepository.findMembrosByFamilia(familiaId);
+      const membrosAtivos = new Set(
+        membros.filter((m: any) => m.status === 'ACEITO').map((m: any) => m.id),
+      );
+      for (const membroId of dto.participantesId) {
+        if (!membrosAtivos.has(membroId)) {
+          throw new AppError(`Participante ${membroId} não é membro ativo desta família`, 400);
+        }
+      }
+      const duplicados = dto.participantesId.filter((id, i) => dto.participantesId!.indexOf(id) !== i);
+      if (duplicados.length > 0) {
+        throw new AppError('Participantes duplicados não são permitidos', 400);
+      }
+    }
+
     if (
       dto.tipo === TipoTarefa.FAMILIAR &&
       dto.modoDistribuicao === ModoDistribuicao.FIXA &&
-      !dto.responsavelAtualId
+      !responsavelFinal
     ) {
       throw new AppError('Tarefa fixa deve ter um responsável', 400);
     }
@@ -423,6 +554,20 @@ export class TarefaService {
       });
     }
 
+    if (dto.participantesId !== undefined) {
+      const execucoesAgendadas = await tarefaRepository.findExecucoesByTarefa(tarefaId);
+      const agendadas = execucoesAgendadas
+        .filter((e: any) => e.status === StatusExecucao.AGENDADA)
+        .sort((a: any, b: any) => new Date(a.data).getTime() - new Date(b.data).getTime());
+
+      if (agendadas.length > 0) {
+        const reatribuidas = atribuirExecucoes(agendadas, responsavelFinal, participantesFinais);
+        for (const e of reatribuidas) {
+          await tarefaRepository.updateExecucao(e.id, { executorId: e.executorId });
+        }
+      }
+    }
+
     if (dto.recorrencia !== undefined) {
       const recorrenciaAntiga = tarefa.recorrencia as Recorrencia | null;
       const recorrenciaNova = dto.recorrencia;
@@ -454,9 +599,10 @@ export class TarefaService {
         const futurasAtualizar = geradas.filter((e) => e.data >= agoraAtualizar);
         validarDatasExecucoes(futurasAtualizar, cicloTarefa);
         if (futurasAtualizar.length > 0) {
+          const comExecutor = atribuirExecucoes(futurasAtualizar, responsavelFinal, participantesFinais);
           await tarefaRepository.createExecucoes(
             tarefaId,
-            futurasAtualizar.map((e) => ({ data: e.data, status: e.status, iteracao: 0 })),
+            comExecutor.map((e) => ({ data: e.data, status: e.status, iteracao: 0, executorId: e.executorId })),
           );
         }
 
@@ -467,7 +613,7 @@ export class TarefaService {
     }
 
     const resultado = await tarefaRepository.update(tarefaId, dto);
-    return transformResponsavel(resultado);
+    return transformTarefa(resultado);
   }
 
   async remover(familiaId: string, tarefaId: string) {
@@ -641,7 +787,7 @@ export class TarefaService {
       );
       const atrasada = tarefa.execucoes?.find((e: any) => e.status === 'ATRASADA');
 
-      return transformResponsavel({
+      return transformTarefa({
         ...tarefa,
         execucoes: venceHoje ? [venceHoje] : atrasada ? [atrasada] : [],
       });
@@ -692,6 +838,10 @@ export class TarefaService {
       throw new AppError('Tarefa não encontrada', 404);
     }
 
+    const participantesOriginais = (original as any).participantes
+      ? (original as any).participantes.map((pt: any) => pt.membroId)
+      : [];
+
     const nova = await tarefaRepository.create({
       familiaId,
       titulo: original.titulo,
@@ -700,6 +850,7 @@ export class TarefaService {
       categoria: original.categoria as Categoria,
       modoDistribuicao: original.modoDistribuicao as ModoDistribuicao | null,
       responsavelAtualId: original.responsavelAtualId,
+      participantesId: participantesOriginais.length > 0 ? participantesOriginais : undefined,
       pontos: original.pontos,
       cicloId: original.cicloId,
       cicloIteracao: original.cicloIteracao,
@@ -710,10 +861,11 @@ export class TarefaService {
         status: e.status as StatusExecucao,
         pontosObtidos: e.pontosObtidos,
         iteracao: e.iteracao,
+        executorId: (e as any).executorId ?? null,
       })),
     });
 
-    return transformResponsavel(nova);
+    return transformTarefa(nova);
   }
 }
 

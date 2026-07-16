@@ -20,6 +20,15 @@ const execucaoInclude = {
           usuario: { select: { id: true } },
         },
       },
+      participantes: {
+        include: {
+          membro: {
+            include: {
+              usuario: { select: { id: true } },
+            },
+          },
+        },
+      },
       familia: {
         include: {
           membros: {
@@ -29,6 +38,11 @@ const execucaoInclude = {
           },
         },
       },
+    },
+  },
+  executor: {
+    include: {
+      usuario: { select: { id: true } },
     },
   },
 };

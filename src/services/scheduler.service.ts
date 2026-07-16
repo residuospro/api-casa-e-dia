@@ -2,19 +2,39 @@ import { schedulerRepository } from '../repositories/scheduler.repository';
 import { notificationService } from './notification.service';
 import { NotificacaoTipo } from '../models/enums';
 
-function resolverDestinatario(tarefa: any): { usuarioId: string; nome: string } | null {
-  const responsavel = tarefa.responsavelAtual;
+function resolverDestinatarios(execucao: any): { usuarioId: string }[] {
+  const destinatarios: { usuarioId: string }[] = [];
+  const vistos = new Set<string>();
 
-  if (responsavel?.usuario?.id) {
-    return { usuarioId: responsavel.usuario.id, nome: responsavel.nome ?? 'Responsável' };
+  const executor = execucao.executor;
+  if (executor?.usuario?.id && !vistos.has(executor.usuario.id)) {
+    destinatarios.push({ usuarioId: executor.usuario.id });
+    vistos.add(executor.usuario.id);
   }
 
-  const admin = tarefa.familia?.membros?.[0];
-  if (admin?.usuario?.id) {
-    return { usuarioId: admin.usuario.id, nome: admin.nome ?? 'Administrador' };
+  const responsavel = execucao.tarefa?.responsavelAtual;
+  if (responsavel?.usuario?.id && !vistos.has(responsavel.usuario.id)) {
+    destinatarios.push({ usuarioId: responsavel.usuario.id });
+    vistos.add(responsavel.usuario.id);
   }
 
-  return null;
+  const participantes = execucao.tarefa?.participantes ?? [];
+  for (const pt of participantes) {
+    const usuarioId = pt.membro?.usuario?.id;
+    if (usuarioId && !vistos.has(usuarioId)) {
+      destinatarios.push({ usuarioId });
+      vistos.add(usuarioId);
+    }
+  }
+
+  if (destinatarios.length === 0) {
+    const admin = execucao.tarefa?.familia?.membros?.[0];
+    if (admin?.usuario?.id) {
+      destinatarios.push({ usuarioId: admin.usuario.id });
+    }
+  }
+
+  return destinatarios;
 }
 
 export class SchedulerService {
@@ -45,9 +65,9 @@ export class SchedulerService {
 
     for (const execucao of execucoes) {
       const tarefa = (execucao as any).tarefa;
-      const destinatario = resolverDestinatario(tarefa);
+      const destinatarios = resolverDestinatarios(execucao);
 
-      if (!destinatario) continue;
+      if (destinatarios.length === 0) continue;
 
       const horario = execucao.data.toLocaleTimeString('pt-BR', {
         hour: '2-digit',
@@ -64,13 +84,15 @@ export class SchedulerService {
         tipo: 'VENCE_HOJE',
       });
 
-      await notificationService.criar({
-        usuarioId: destinatario.usuarioId,
-        tipo: NotificacaoTipo.EXECUCAO_TAREFA,
-        titulo,
-        mensagem,
-        dados,
-      });
+      for (const dest of destinatarios) {
+        await notificationService.criar({
+          usuarioId: dest.usuarioId,
+          tipo: NotificacaoTipo.EXECUCAO_TAREFA,
+          titulo,
+          mensagem,
+          dados,
+        });
+      }
 
       idsNotificadas.push(execucao.id);
     }
@@ -91,9 +113,9 @@ export class SchedulerService {
 
     for (const execucao of execucoes) {
       const tarefa = (execucao as any).tarefa;
-      const destinatario = resolverDestinatario(tarefa);
+      const destinatarios = resolverDestinatarios(execucao);
 
-      if (!destinatario) continue;
+      if (destinatarios.length === 0) continue;
 
       const titulo = `Tarefa atrasada: ${tarefa.titulo}`;
       const mensagem = `A tarefa "${tarefa.titulo}" está atrasada! O prazo venceu no dia ${execucao.data.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}. Corra para concluí-la.`;
@@ -104,13 +126,15 @@ export class SchedulerService {
         tipo: 'ATRASADA',
       });
 
-      await notificationService.criar({
-        usuarioId: destinatario.usuarioId,
-        tipo: NotificacaoTipo.EXECUCAO_TAREFA,
-        titulo,
-        mensagem,
-        dados,
-      });
+      for (const dest of destinatarios) {
+        await notificationService.criar({
+          usuarioId: dest.usuarioId,
+          tipo: NotificacaoTipo.EXECUCAO_TAREFA,
+          titulo,
+          mensagem,
+          dados,
+        });
+      }
 
       idsNotificadas.push(execucao.id);
     }
