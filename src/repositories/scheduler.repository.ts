@@ -56,7 +56,7 @@ export const schedulerRepository = {
     return prisma.execucaoTarefa.updateMany({
       where: {
         status: 'AGENDADA',
-        data: { lt: inicioDoDia() },
+        data: { lt: new Date() },
       },
       data: { status: 'ATRASADA' },
     });
