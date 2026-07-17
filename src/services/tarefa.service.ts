@@ -3,7 +3,6 @@ import { familyRepository } from '../repositories/family.repository';
 import { cicloRepository } from '../repositories/ciclo.repository';
 import { AppError } from './auth.service';
 import { TipoTarefa, ModoDistribuicao, StatusExecucao, NotificacaoTipo, FrequenciaRecorrencia, Categoria } from '../models/enums';
-import { generateAvatar } from '../utils/avatar';
 import {
   CriarTarefaDTO,
   AtualizarTarefaDTO,
@@ -146,63 +145,18 @@ function validarDatasExecucoes(
   }
 }
 
-function transformResponsavel(tarefa: any) {
-  if (!tarefa.responsavelAtual) return tarefa;
-  const r = tarefa.responsavelAtual;
-  return {
-    ...tarefa,
-    responsavelAtual: {
-      id: r.id,
-      nome: r.nome ?? r.usuario?.nome ?? null,
-      fotoPerfil: r.fotoPerfil ?? r.usuario?.fotoPerfil ?? generateAvatar(r.nome ?? r.usuario?.nome ?? 'Sem nome', r.genero ?? r.usuario?.genero ?? null),
-      genero: r.genero ?? r.usuario?.genero ?? null,
-    },
-  };
-}
-
 function transformParticipantes(tarefa: any) {
   if (!tarefa.participantes || !Array.isArray(tarefa.participantes)) return tarefa;
-  const participantes = tarefa.participantes.map((pt: any) => {
-    const m = pt.membro;
-    if (!m) return null;
-    return {
-      id: m.id,
-      nome: m.nome ?? m.usuario?.nome ?? null,
-      fotoPerfil: m.fotoPerfil ?? m.usuario?.fotoPerfil ?? generateAvatar(m.nome ?? m.usuario?.nome ?? 'Sem nome', m.genero ?? m.usuario?.genero ?? null),
-      genero: m.genero ?? m.usuario?.genero ?? null,
-    };
-  }).filter(Boolean);
+  const participantesId = tarefa.participantes.map((pt: any) => pt.membroId).filter(Boolean);
+  const { participantes, ...rest } = tarefa;
   return {
-    ...tarefa,
-    participantesId: participantes.map((p: any) => p.id),
-    participantes,
-  };
-}
-
-function transformExecutor(execucao: any) {
-  if (!execucao.executor) return execucao;
-  const e = execucao.executor;
-  return {
-    ...execucao,
-    executor: {
-      id: e.id,
-      nome: e.nome ?? e.usuario?.nome ?? null,
-      fotoPerfil: e.fotoPerfil ?? e.usuario?.fotoPerfil ?? generateAvatar(e.nome ?? e.usuario?.nome ?? 'Sem nome', e.genero ?? e.usuario?.genero ?? null),
-      genero: e.genero ?? e.usuario?.genero ?? null,
-    },
+    ...rest,
+    participantesId,
   };
 }
 
 function transformTarefa(tarefa: any) {
-  let result = transformResponsavel(tarefa);
-  result = transformParticipantes(result);
-  if (result.execucoes) {
-    result = {
-      ...result,
-      execucoes: result.execucoes.map(transformExecutor),
-    };
-  }
-  return result;
+  return transformParticipantes(tarefa);
 }
 
 function atribuirExecucoes<T extends { data: Date; status?: any }>(

@@ -229,6 +229,7 @@ model Tarefa {
   execucoes          ExecucaoTarefa[]
 
   @@index([familiaId, ativo])
+  @@index([familiaId, ativo, criadoEm])
   @@index([cicloId])
   @@index([responsavelAtualId])
   @@map("tarefas")

@@ -15,33 +15,15 @@ const responsavelAtualInclude = {
   },
 };
 
-const executorInclude = {
-  select: {
-    id: true,
-    nome: true,
-    fotoPerfil: true,
-    genero: true,
-    usuario: {
-      select: { id: true, nome: true, fotoPerfil: true, genero: true },
-    },
-  },
-};
-
-const participanteInclude = {
-  select: {
-    id: true,
-    membro: responsavelAtualInclude,
-  },
-};
-
 const tarefaInclude = {
   execucoes: {
     orderBy: { data: 'asc' as const },
-    include: { executor: executorInclude },
+    select: { id: true, data: true, status: true, pontosObtidos: true, iteracao: true, executorId: true, concluidoPorId: true, concluidoEm: true, notificacaoCriada: true, notificacaoAtrasada: true },
   },
   ciclo: { select: { id: true, nome: true, iteracao: true } },
-  responsavelAtual: responsavelAtualInclude,
-  participantes: participanteInclude,
+  participantes: {
+    select: { membroId: true },
+  },
   criadoPor: {
     select: { id: true, nome: true, fotoPerfil: true },
   },
@@ -51,7 +33,7 @@ const tarefaListInclude = {
   execucoes: {
     orderBy: { data: 'asc' as const },
     where: { status: { in: [StatusExecucao.AGENDADA, StatusExecucao.ATRASADA] } },
-    select: { id: true, data: true, status: true, pontosObtidos: true, iteracao: true, executor: executorInclude },
+    select: { id: true, data: true, status: true, pontosObtidos: true, iteracao: true, executorId: true },
   },
   ciclo: { select: { id: true, nome: true, iteracao: true } },
   responsavelAtual: {
@@ -61,14 +43,13 @@ const tarefaListInclude = {
       fotoPerfil: true,
       genero: true,
       usuario: {
-        select: { id: true, nome: true, fotoPerfil: true, genero: true },
+        select: { id: true },
       },
     },
   },
   participantes: {
     select: {
-      id: true,
-      membro: responsavelAtualInclude,
+      membroId: true,
     },
   },
 };
