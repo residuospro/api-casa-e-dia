@@ -408,6 +408,23 @@ export class TarefaService {
 
     const ultimaPagina = Math.ceil(total / options.porPagina);
 
+    const hojeInicio = new Date();
+    hojeInicio.setHours(0, 0, 0, 0);
+    const hojeFim = new Date();
+    hojeFim.setHours(23, 59, 59, 999);
+
+    const result = data.map(transformTarefa);
+
+    result.sort((a: any, b: any) => {
+      const aHoje = a.execucoes?.some((e: any) =>
+        e.status === StatusExecucao.AGENDADA && new Date(e.data) >= hojeInicio && new Date(e.data) <= hojeFim,
+      ) ? 0 : 1;
+      const bHoje = b.execucoes?.some((e: any) =>
+        e.status === StatusExecucao.AGENDADA && new Date(e.data) >= hojeInicio && new Date(e.data) <= hojeFim,
+      ) ? 0 : 1;
+      return aHoje - bHoje;
+    });
+
     return {
       filtro,
       ordenacao: options.ordenacao ?? [{ coluna: 'criadoEm', direcao: 'desc' }],
@@ -417,7 +434,7 @@ export class TarefaService {
         por_pagina: options.porPaginaResposta,
         ultima_pagina: ultimaPagina,
       },
-      data: data.map(transformTarefa),
+      data: result,
     };
   }
 
