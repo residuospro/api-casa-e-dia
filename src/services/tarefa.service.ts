@@ -693,7 +693,7 @@ export class TarefaService {
     };
   }
 
-  async atualizarExecucao(familiaId: string, execucaoId: string, data: Date) {
+  async atualizarExecucao(familiaId: string, execucaoId: string, data?: Date, executorId?: string | null) {
     const execucao = await tarefaRepository.findExecucaoById(execucaoId);
     if (!execucao) {
       throw new AppError('Execução não encontrada', 404);
@@ -708,12 +708,18 @@ export class TarefaService {
       cicloTarefa = await cicloRepository.findById(execucao.tarefa.cicloId) as any;
     }
 
-    validarDatasExecucoes([{ data }], cicloTarefa);
-
-    await tarefaRepository.updateExecucao(execucaoId, { data });
+    const updateData: Record<string, any> = {};
+    if (data) {
+      validarDatasExecucoes([{ data }], cicloTarefa);
+      updateData.data = data;
+    }
+    if (executorId !== undefined && executorId !== null) {
+      updateData.executorId = executorId;
+    }
+    await tarefaRepository.updateExecucao(execucaoId, updateData);
 
     return {
-      message: 'Data da execução atualizada com sucesso',
+      message: 'Execução atualizada com sucesso',
     };
   }
 

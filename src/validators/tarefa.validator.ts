@@ -63,5 +63,6 @@ export const concluirExecucaoSchema = z.object({
 });
 
 export const atualizarExecucaoSchema = z.object({
-  data: z.string().datetime({ message: 'Data inválida' }),
+  data: z.string().datetime({ message: 'Data inválida' }).optional(),
+  executorId: z.string().nullable().optional(),
 });

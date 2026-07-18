@@ -193,8 +193,8 @@ export const tarefaController = {
   async atualizarExecucao(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { familiaId, execucaoId } = req.params;
-      const { data } = atualizarExecucaoSchema.parse(req.body);
-      const resultado = await tarefaService.atualizarExecucao(familiaId, execucaoId, new Date(data));
+      const dados = atualizarExecucaoSchema.parse(req.body);
+      const resultado = await tarefaService.atualizarExecucao(familiaId, execucaoId, dados.data ? new Date(dados.data) : undefined, dados.executorId);
       res.json(resultado);
     } catch (err) {
       if (err instanceof ZodError) {
