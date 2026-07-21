@@ -437,9 +437,7 @@ export const tarefaRepository = {
   },
 
   findUrgentesByFamilia(familiaId: string) {
-    const hoje = new Date();
-    const inicioDoDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
-    const fimDoDia = new Date(inicioDoDia.getTime() + 24 * 60 * 60 * 1000);
+    const agora = new Date();
 
     return prisma.tarefa.findMany({
       where: {
@@ -449,7 +447,7 @@ export const tarefaRepository = {
           some: {
             OR: [
               { status: 'ATRASADA' },
-              { status: 'AGENDADA', data: { gte: inicioDoDia, lt: fimDoDia } },
+              { status: 'AGENDADA', data: { gte: agora } },
             ],
           },
         },
@@ -459,7 +457,7 @@ export const tarefaRepository = {
           where: {
             OR: [
               { status: 'ATRASADA' },
-              { status: 'AGENDADA', data: { gte: inicioDoDia, lt: fimDoDia } },
+              { status: 'AGENDADA', data: { gte: agora } },
             ],
           },
           orderBy: { data: 'asc' },
@@ -470,14 +468,36 @@ export const tarefaRepository = {
           select: { id: true, nome: true, fotoPerfil: true },
         },
       },
-      take: 4,
-      orderBy: { criadoEm: 'desc' },
     });
   },
 
   countByFamilia(familiaId: string) {
     return prisma.tarefa.count({
       where: { familiaId, ativo: true },
+    });
+  },
+
+  countTarefasDoDia(familiaId: string) {
+    const hoje = new Date();
+    const inicioDoDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    const fimDoDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + 1);
+
+    return prisma.tarefa.count({
+      where: {
+        familiaId,
+        ativo: true,
+        execucoes: {
+          some: {
+            OR: [
+              { status: StatusExecucao.ATRASADA },
+              {
+                status: StatusExecucao.AGENDADA,
+                data: { gte: inicioDoDia, lt: fimDoDia },
+              },
+            ],
+          },
+        },
+      },
     });
   },
 

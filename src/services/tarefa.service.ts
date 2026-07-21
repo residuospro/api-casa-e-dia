@@ -408,21 +408,36 @@ export class TarefaService {
 
     const ultimaPagina = Math.ceil(total / options.porPagina);
 
-    const hojeInicio = new Date();
-    hojeInicio.setHours(0, 0, 0, 0);
-    const hojeFim = new Date();
-    hojeFim.setHours(23, 59, 59, 999);
-
     const result = data.map(transformTarefa);
 
+    const agora = new Date();
+    const fimHoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + 1);
+
     result.sort((a: any, b: any) => {
-      const aHoje = a.execucoes?.some((e: any) =>
-        e.status === StatusExecucao.AGENDADA && new Date(e.data) >= hojeInicio && new Date(e.data) <= hojeFim,
-      ) ? 0 : 1;
-      const bHoje = b.execucoes?.some((e: any) =>
-        e.status === StatusExecucao.AGENDADA && new Date(e.data) >= hojeInicio && new Date(e.data) <= hojeFim,
-      ) ? 0 : 1;
-      return aHoje - bHoje;
+      const prioridade = (t: any): number => {
+        const execs = t.execucoes ?? [];
+        const temAtrasada = execs.some((e: any) => e.status === StatusExecucao.ATRASADA);
+        if (temAtrasada) return 0;
+        const temHoje = execs.some(
+          (e: any) => e.status === StatusExecucao.AGENDADA && new Date(e.data) < fimHoje,
+        );
+        if (temHoje) return 1;
+        const temProximo = execs.some((e: any) => e.status === StatusExecucao.AGENDADA);
+        if (temProximo) return 2;
+        return 3;
+      };
+
+      const pa = prioridade(a);
+      const pb = prioridade(b);
+      if (pa !== pb) return pa - pb;
+
+      const menorData = (t: any): number => {
+        const agendadas = (t.execucoes ?? [])
+          .filter((e: any) => e.status === StatusExecucao.AGENDADA)
+          .map((e: any) => new Date(e.data).getTime());
+        return agendadas.length > 0 ? Math.min(...agendadas) : Infinity;
+      };
+      return menorData(a) - menorData(b);
     });
 
     return {
@@ -751,28 +766,36 @@ export class TarefaService {
   async urgentes(familiaId: string) {
     const tarefas = await tarefaRepository.findUrgentesByFamilia(familiaId);
 
-    return tarefas.map((tarefa: any) => {
-      const hoje = new Date();
-      const inicioDoDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
-      const fimDoDia = new Date(inicioDoDia.getTime() + 24 * 60 * 60 * 1000);
+    const comUrgencia = tarefas.map((tarefa: any) => {
+      const execucoes = tarefa.execucoes ?? [];
+      const atrasadas = execucoes.filter((e: any) => e.status === 'ATRASADA');
+      const agendadas = execucoes.filter((e: any) => e.status === 'AGENDADA');
 
-      const venceHoje = tarefa.execucoes?.find(
-        (e: any) =>
-          e.status === 'AGENDADA' &&
-          e.data >= inicioDoDia &&
-          e.data < fimDoDia,
-      );
-      const atrasada = tarefa.execucoes?.find((e: any) => e.status === 'ATRASADA');
+      const maisUrgente = atrasadas.length > 0
+        ? atrasadas.reduce((mais: any, e: any) => e.data < mais.data ? e : mais)
+        : agendadas.reduce((mais: any, e: any) => e.data < mais.data ? e : mais, agendadas[0]);
 
-      return transformTarefa({
-        ...tarefa,
-        execucoes: venceHoje ? [venceHoje] : atrasada ? [atrasada] : [],
-      });
+      const dataRef = maisUrgente?.data ?? new Date(0);
+      const ehAtrasada = atrasadas.length > 0;
+
+      return { tarefa, maisUrgente, dataRef, ehAtrasada };
     });
+
+    comUrgencia.sort((a, b) => {
+      if (a.ehAtrasada !== b.ehAtrasada) return a.ehAtrasada ? -1 : 1;
+      return new Date(a.dataRef).getTime() - new Date(b.dataRef).getTime();
+    });
+
+    return comUrgencia.slice(0, 4).map(({ tarefa, maisUrgente }) =>
+      transformTarefa({
+        ...tarefa,
+        execucoes: maisUrgente ? [maisUrgente] : [],
+      }),
+    );
   }
 
   async resumo(familiaId: string) {
-    const totalTarefas = await tarefaRepository.countByFamilia(familiaId);
+    const totalTarefas = await tarefaRepository.countTarefasDoDia(familiaId);
     const execucoesConcluidas = await tarefaRepository.countExecucoesByFamiliaAndStatus(
       familiaId,
       StatusExecucao.CONCLUIDA,
