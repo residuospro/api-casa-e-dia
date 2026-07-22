@@ -41,18 +41,19 @@ function calcularDiasAteFimCiclo(ciclo: { inicio: Date; duracaoDias: number; pro
   return DIAS_A_FRENTE_SEM_CICLO;
 }
 
-async function estenderRecorrencias(): Promise<void> {
+export async function estenderRecorrencias(): Promise<{ tarefasProcessadas: number; execucoesGeradas: number }> {
   const tarefas = await tarefaRepository.findTarefasComRecorrencia();
 
   if (tarefas.length === 0) {
     console.log('[RecorrenciaScheduler] Nenhuma tarefa com recorrência encontrada');
-    return;
+    return { tarefasProcessadas: 0, execucoesGeradas: 0 };
   }
 
   console.log(`[RecorrenciaScheduler] ${tarefas.length} tarefa(s) com recorrência`);
 
   const agora = new Date();
   let geradas = 0;
+  let processadas = 0;
 
   for (const tarefa of tarefas) {
     const recorrencia = tarefa.recorrencia as Recorrencia | null;
@@ -75,13 +76,15 @@ async function estenderRecorrencias(): Promise<void> {
     if (novas.length > 0) {
       await tarefaRepository.createExecucoes(
         tarefa.id,
-        novas.map((e) => ({ data: e.data, status: e.status })),
+        novas.map((e) => ({ data: e.data, status: e.status, iteracao: tarefa.cicloIteracao ?? null })),
       );
       geradas += novas.length;
     }
+    processadas++;
   }
 
   console.log(`[RecorrenciaScheduler] ${geradas} execução(ões) gerada(s)`);
+  return { tarefasProcessadas: processadas, execucoesGeradas: geradas };
 }
 
 export function stopRecorrenciaScheduler(): void {

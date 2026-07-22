@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { tarefaService } from '../services/tarefa.service';
 import { familyRepository } from '../repositories/family.repository';
+import { estenderRecorrencias } from '../scheduler/recorrencia';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { criarTarefaSchema, atualizarTarefaSchema, concluirTarefaSchema, concluirExecucaoSchema, atualizarExecucaoSchema } from '../validators/tarefa.validator';
 import { ZodError } from 'zod';
@@ -250,6 +251,15 @@ export const tarefaController = {
 
       const resultado = await tarefaService.duplicar(familiaId, id, membro.id);
       res.status(201).json(resultado);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async executarSchedulerRecorrencia(_req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const resultado = await estenderRecorrencias();
+      res.json({ message: 'Scheduler executado com sucesso', ...resultado });
     } catch (err) {
       next(err);
     }

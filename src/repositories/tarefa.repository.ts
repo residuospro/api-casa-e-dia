@@ -530,6 +530,7 @@ export const tarefaRepository = {
         id: true,
         recorrencia: true,
         cicloId: true,
+        cicloIteracao: true,
         ciclo: {
           select: {
             inicio: true,

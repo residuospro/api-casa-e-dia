@@ -5,12 +5,16 @@ import familyRoutes from './family.routes';
 import notificationRoutes from './notification.routes';
 import tarefaRoutes from './tarefa.routes';
 import cicloRoutes from './ciclo.routes';
+import { tarefaController } from '../controllers/tarefa.controller';
+import { authMiddleware } from '../middlewares/auth.middleware';
 
 const router: Router = Router();
 
 router.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
+
+router.post('/scheduler/recorrencia', authMiddleware, tarefaController.executarSchedulerRecorrencia);
 
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
