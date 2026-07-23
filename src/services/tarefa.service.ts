@@ -536,7 +536,7 @@ export class TarefaService {
         if (e.id && iteracaoPorId.has(e.id)) {
           return { ...e, iteracao: e.iteracao ?? iteracaoPorId.get(e.id) ?? null };
         }
-        return { ...e, iteracao: e.iteracao ?? tarefa.cicloIteracao ?? null };
+        return { ...e, iteracao: e.iteracao ?? (tarefa as any).ciclo?.iteracao ?? tarefa.cicloIteracao ?? 0 };
       });
     }
 
