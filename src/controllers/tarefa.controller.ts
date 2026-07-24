@@ -66,6 +66,15 @@ export const tarefaController = {
     try {
       const { familiaId } = req.params;
 
+      const membro = await familyRepository.findMembroByUsuarioAndFamilia(
+        req.usuario!.id,
+        familiaId,
+      );
+      if (!membro) {
+        res.status(403).json({ error: 'Forbidden', message: 'Você não é membro desta família' });
+        return;
+      }
+
       const query = req.query as Record<string, unknown>;
       const paginacao = query.paginacao as Record<string, string> | undefined;
 
@@ -84,6 +93,8 @@ export const tarefaController = {
         porPagina,
         paginaResposta: Number(rawPagina) || 1,
         porPaginaResposta: Number(rawPorPagina) || 10,
+        membroId: membro.id,
+        permissao: membro.permissao ?? undefined,
       });
 
       res.json(resultado);
@@ -95,7 +106,17 @@ export const tarefaController = {
   async obter(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { familiaId, id } = req.params;
-      const resultado = await tarefaService.obter(familiaId, id);
+
+      const membro = await familyRepository.findMembroByUsuarioAndFamilia(
+        req.usuario!.id,
+        familiaId,
+      );
+      if (!membro) {
+        res.status(403).json({ error: 'Forbidden', message: 'Você não é membro desta família' });
+        return;
+      }
+
+      const resultado = await tarefaService.obter(familiaId, id, membro.id, membro.permissao ?? undefined);
       res.json(resultado);
     } catch (err) {
       next(err);
@@ -209,7 +230,17 @@ export const tarefaController = {
   async urgentes(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { familiaId } = req.params;
-      const resultado = await tarefaService.urgentes(familiaId);
+
+      const membro = await familyRepository.findMembroByUsuarioAndFamilia(
+        req.usuario!.id,
+        familiaId,
+      );
+      if (!membro) {
+        res.status(403).json({ error: 'Forbidden', message: 'Você não é membro desta família' });
+        return;
+      }
+
+      const resultado = await tarefaService.urgentes(familiaId, membro.id, membro.permissao ?? undefined);
       res.json(resultado);
     } catch (err) {
       next(err);
@@ -229,7 +260,17 @@ export const tarefaController = {
   async resumo(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { familiaId } = req.params;
-      const resultado = await tarefaService.resumo(familiaId);
+
+      const membro = await familyRepository.findMembroByUsuarioAndFamilia(
+        req.usuario!.id,
+        familiaId,
+      );
+      if (!membro) {
+        res.status(403).json({ error: 'Forbidden', message: 'Você não é membro desta família' });
+        return;
+      }
+
+      const resultado = await tarefaService.resumo(familiaId, membro.id, membro.permissao ?? undefined);
       res.json(resultado);
     } catch (err) {
       next(err);

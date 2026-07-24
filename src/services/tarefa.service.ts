@@ -376,6 +376,8 @@ export class TarefaService {
       porPagina: number;
       paginaResposta: number;
       porPaginaResposta: number;
+      membroId?: string;
+      permissao?: string;
     },
   ) {
     const familia = await familyRepository.findFamiliaById(familiaId);
@@ -403,7 +405,7 @@ export class TarefaService {
 
     const { data, total } = await tarefaRepository.findByFamiliaWithFilters(
       familiaId,
-      { filtro, ordenacao: options.ordenacao, pagina: options.pagina, porPagina: options.porPagina },
+      { filtro, ordenacao: options.ordenacao, pagina: options.pagina, porPagina: options.porPagina, membroId: options.membroId, permissao: options.permissao },
     );
 
     const ultimaPagina = Math.ceil(total / options.porPagina);
@@ -453,10 +455,20 @@ export class TarefaService {
     };
   }
 
-  async obter(familiaId: string, tarefaId: string) {
+  async obter(familiaId: string, tarefaId: string, membroId?: string, permissao?: string) {
     const tarefa = await tarefaRepository.findById(tarefaId);
     if (!tarefa || tarefa.familiaId !== familiaId) {
       throw new AppError('Tarefa não encontrada', 404);
+    }
+
+    if (membroId && permissao && permissao !== 'ADMIN') {
+      const tarefaAny = tarefa as any;
+      const ehCriador = tarefaAny.criadoPorId === membroId;
+      const ehResponsavel = tarefaAny.responsavelAtualId === membroId;
+      const ehParticipante = tarefaAny.participantes?.some((p: any) => p.membroId === membroId);
+      if (!ehCriador && !ehResponsavel && !ehParticipante) {
+        throw new AppError('Tarefa não encontrada', 404);
+      }
     }
 
     return transformTarefa(tarefa);
@@ -763,8 +775,8 @@ export class TarefaService {
     });
   }
 
-  async urgentes(familiaId: string) {
-    const tarefas = await tarefaRepository.findUrgentesByFamilia(familiaId);
+  async urgentes(familiaId: string, membroId?: string, permissao?: string) {
+    const tarefas = await tarefaRepository.findUrgentesByFamilia(familiaId, membroId, permissao);
 
     const comUrgencia = tarefas.map((tarefa: any) => {
       const execucoes = tarefa.execucoes ?? [];
@@ -794,15 +806,19 @@ export class TarefaService {
     );
   }
 
-  async resumo(familiaId: string) {
-    const totalTarefas = await tarefaRepository.countTarefasDoDia(familiaId);
+  async resumo(familiaId: string, membroId?: string, permissao?: string) {
+    const totalTarefas = await tarefaRepository.countTarefasDoDia(familiaId, membroId, permissao);
     const execucoesConcluidas = await tarefaRepository.countExecucoesByFamiliaAndStatus(
       familiaId,
       StatusExecucao.CONCLUIDA,
+      membroId,
+      permissao,
     );
     const execucoesAtrasadas = await tarefaRepository.countExecucoesByFamiliaAndStatus(
       familiaId,
       StatusExecucao.ATRASADA,
+      membroId,
+      permissao,
     );
 
     const ciclosAtivos = await cicloRepository.findCiclosAtivos(familiaId);

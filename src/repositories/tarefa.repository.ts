@@ -3,6 +3,20 @@ import { Prisma } from '../generated/prisma-client';
 import { CriarTarefaDTO, AtualizarTarefaDTO, AtualizarExecucaoDTO } from '../models/tarefa.model';
 import { StatusExecucao } from '../models/enums';
 
+function buildPermissaoWhere(
+  membroId: string,
+  permissao: string,
+): Record<string, unknown> | null {
+  if (permissao === 'ADMIN') return null;
+  return {
+    OR: [
+      { criadoPorId: membroId },
+      { responsavelAtualId: membroId },
+      { participantes: { some: { membroId } } },
+    ],
+  };
+}
+
 const responsavelAtualInclude = {
   select: {
     id: true,
@@ -122,6 +136,8 @@ export const tarefaRepository = {
       ordenacao?: { coluna: string; direcao: 'asc' | 'desc' }[];
       pagina: number;
       porPagina: number;
+      membroId?: string;
+      permissao?: string;
     },
   ) {
     type WhereWithExecucoes = Record<string, unknown> & {
@@ -129,6 +145,13 @@ export const tarefaRepository = {
     };
 
     const where: WhereWithExecucoes = { familiaId };
+
+    const permissaoWhere = options.membroId && options.permissao
+      ? buildPermissaoWhere(options.membroId, options.permissao)
+      : null;
+    if (permissaoWhere) {
+      where.AND = [permissaoWhere];
+    }
     if (options.filtro) {
       for (const [key, value] of Object.entries(options.filtro)) {
         if (!value || (Array.isArray(value) && value.length === 0)) continue;
@@ -436,8 +459,12 @@ export const tarefaRepository = {
     });
   },
 
-  findUrgentesByFamilia(familiaId: string) {
+  findUrgentesByFamilia(familiaId: string, membroId?: string, permissao?: string) {
     const agora = new Date();
+
+    const permissaoWhere = membroId && permissao
+      ? buildPermissaoWhere(membroId, permissao)
+      : null;
 
     return prisma.tarefa.findMany({
       where: {
@@ -451,6 +478,7 @@ export const tarefaRepository = {
             ],
           },
         },
+        ...(permissaoWhere ? { AND: [permissaoWhere] } : {}),
       },
       include: {
         execucoes: {
@@ -477,10 +505,14 @@ export const tarefaRepository = {
     });
   },
 
-  countTarefasDoDia(familiaId: string) {
+  countTarefasDoDia(familiaId: string, membroId?: string, permissao?: string) {
     const hoje = new Date();
     const inicioDoDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
     const fimDoDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + 1);
+
+    const permissaoWhere = membroId && permissao
+      ? buildPermissaoWhere(membroId, permissao)
+      : null;
 
     return prisma.tarefa.count({
       where: {
@@ -497,6 +529,7 @@ export const tarefaRepository = {
             ],
           },
         },
+        ...(permissaoWhere ? { AND: [permissaoWhere] } : {}),
       },
     });
   },
@@ -511,11 +544,19 @@ export const tarefaRepository = {
     });
   },
 
-  countExecucoesByFamiliaAndStatus(familiaId: string, status: StatusExecucao) {
+  countExecucoesByFamiliaAndStatus(familiaId: string, status: StatusExecucao, membroId?: string, permissao?: string) {
+    const permissaoWhere = membroId && permissao
+      ? buildPermissaoWhere(membroId, permissao)
+      : null;
+
     return prisma.execucaoTarefa.count({
       where: {
         status,
-        tarefa: { familiaId, ativo: true },
+        tarefa: {
+          familiaId,
+          ativo: true,
+          ...(permissaoWhere ? { AND: [permissaoWhere] } : {}),
+        },
       },
     });
   },
