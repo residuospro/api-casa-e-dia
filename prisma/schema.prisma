@@ -72,6 +72,91 @@ enum ConviteStatus {
   RECUSADO
 }
 
+// ========== FINANCEIRO ==========
+
+enum TipoConta {
+  CONTA_CORRENTE
+  POUPANCA
+  DINHEIRO
+  INVESTIMENTO
+  CARTEIRA
+}
+
+enum Moeda {
+  BRL
+  USD
+  EUR
+}
+
+enum TipoLancamento {
+  RECEITA
+  DESPESA
+  TRANSFERENCIA
+  AJUSTE
+}
+
+enum StatusLancamento {
+  PENDENTE
+  PAGO
+  CANCELADO
+  IGNORADO
+}
+
+enum OrigemLancamento {
+  MANUAL
+  NOTIFICACAO
+  IA
+  IMPORTACAO
+  RECORRENCIA
+}
+
+enum FormaPagamento {
+  PIX
+  DINHEIRO
+  DEBITO
+  CREDITO
+  BOLETO
+  TRANSFERENCIA
+  OUTRO
+}
+
+enum TipoCategoriaFinanceira {
+  RECEITA
+  DESPESA
+  AMBOS
+}
+
+enum StatusCategoria {
+  ATIVA
+  ARQUIVADA
+}
+
+enum TipoCartao {
+  CREDITO
+  DEBITO
+  AMBOS
+}
+
+enum FrequenciaRecorrenciaFinanceira {
+  DIARIA
+  SEMANAL
+  MENSAL
+  ANUAL
+}
+
+enum TipoMetaFinanceira {
+  ECONOMIA
+  QUITAR_DIVIDA
+  INVESTIMENTO
+  OBJETIVO
+}
+
+enum StatusMetaFinanceira {
+  EM_ANDAMENTO
+  CONCLUIDA
+  CANCELADA
+}
+
 model Usuario {
   id                  String          @id @default(cuid())
   nome                String
@@ -92,37 +177,48 @@ model Usuario {
 }
 
 model Familia {
-  id           String          @id @default(cuid())
-  nome         String
-  criadoEm     DateTime        @default(now())
-  membros      MembroFamilia[]
-  ciclos       Ciclo[]
-  gamificacoes Gamificacao[]
-  tarefas      Tarefa[]
+  id                     String                   @id @default(cuid())
+  nome                   String
+  criadoEm               DateTime                 @default(now())
+  membros                MembroFamilia[]
+  ciclos                 Ciclo[]
+  gamificacoes           Gamificacao[]
+  tarefas                Tarefa[]
+  contas                 Conta[]
+  cartoes                Cartao[]
+  categoriasFinanceira   CategoriaFinanceira[]
+  centrosCustoFinanceiro CentroCustoFinanceiro[]
+  lancamentos            Lancamento[]
+  recorrenciasFinanceira RecorrenciaFinanceira[]
+  metasFinanceira        MetaFinanceira[]
+  orcamentos             Orcamento[]
+  tags                   Tag[]
 
   @@map("familias")
 }
 
 model MembroFamilia {
-  id              String            @id @default(cuid())
-  usuarioId       String?
-  familiaId       String
-  nome            String?
-  fotoPerfil      String?
-  genero          Genero?
-  tipoPessoa      TipoPessoa
-  permissao       Permissao?
-  dependente          Boolean           @default(false)
-  status              ConviteStatus     @default(PENDENTE)
-  conviteEnviado      Boolean           @default(false)
-  criadoEm            DateTime          @default(now())
-  usuario         Usuario?          @relation(fields: [usuarioId], references: [id])
-  familia         Familia           @relation(fields: [familiaId], references: [id])
-  tarefasCriadas  Tarefa[]          @relation("criadorTarefa")
-  tarefasComoResponsavel Tarefa[]   @relation("responsavelTarefa")
-  participacoesTarefa ParticipanteTarefa[] @relation("participanteMembro")
-  execucoesConcluidas ExecucaoTarefa[] @relation("execucoesConcluidas")
-  execucoesComoExecutor ExecucaoTarefa[] @relation("executorExecucao")
+  id                       String            @id @default(cuid())
+  usuarioId                String?
+  familiaId                String
+  nome                     String?
+  fotoPerfil               String?
+  genero                   Genero?
+  tipoPessoa               TipoPessoa
+  permissao                Permissao?
+  dependente               Boolean           @default(false)
+  status                   ConviteStatus     @default(PENDENTE)
+  conviteEnviado           Boolean           @default(false)
+  criadoEm                 DateTime          @default(now())
+  usuario                  Usuario?          @relation(fields: [usuarioId], references: [id])
+  familia                  Familia           @relation(fields: [familiaId], references: [id])
+  tarefasCriadas           Tarefa[]          @relation("criadorTarefa")
+  tarefasComoResponsavel   Tarefa[]          @relation("responsavelTarefa")
+  participacoesTarefa      ParticipanteTarefa[] @relation("participanteMembro")
+  execucoesConcluidas      ExecucaoTarefa[]  @relation("execucoesConcluidas")
+  execucoesComoExecutor    ExecucaoTarefa[]  @relation("executorExecucao")
+  lancamentosCriados       Lancamento[]      @relation("lancamentosCriados")
+  lancamentosResponsavel   Lancamento[]      @relation("lancamentosResponsavel")
 
   @@map("membros_familia")
 }
@@ -256,4 +352,300 @@ model ExecucaoTarefa {
   @@index([status, data])
   @@index([executorId])
   @@map("execucoes_tarefa")
+}
+
+// ========== FINANCEIRO - MODELS ==========
+
+model Conta {
+  id              String    @id @default(cuid())
+  familiaId       String
+  nome            String
+  instituicao     String?
+  tipo            TipoConta
+  moeda           Moeda     @default(BRL)
+  saldoInicial    Decimal   @default(0) @db.Decimal(12, 2)
+  saldoAtual      Decimal   @default(0) @db.Decimal(12, 2)
+  saldoPrevisto   Decimal   @default(0) @db.Decimal(12, 2)
+  cor             String?
+  icone           String?
+  ativo           Boolean   @default(true)
+  criadoEm        DateTime  @default(now())
+  atualizadoEm    DateTime  @updatedAt
+  familia         Familia   @relation(fields: [familiaId], references: [id], onDelete: Cascade)
+  cartoes         Cartao[]
+  lancamentosOrigem   Lancamento[] @relation("contaOrigem")
+  lancamentosDestino  Lancamento[] @relation("contaDestino")
+  metas           MetaFinanceira[]
+
+  @@index([familiaId, ativo])
+  @@map("contas")
+}
+
+model Cartao {
+  id              String    @id @default(cuid())
+  familiaId       String
+  contaId         String
+  nome            String
+  tipo            TipoCartao @default(CREDITO)
+  bandeira        String?
+  limite          Decimal?  @db.Decimal(12, 2)
+  fechamentoDia   Int?
+  vencimentoDia   Int?
+  melhorDiaCompra Int?
+  ativo           Boolean   @default(true)
+  criadoEm        DateTime  @default(now())
+  atualizadoEm    DateTime  @updatedAt
+  familia         Familia   @relation(fields: [familiaId], references: [id], onDelete: Cascade)
+  conta           Conta     @relation(fields: [contaId], references: [id])
+  lancamentos     Lancamento[]
+
+  @@index([familiaId, ativo])
+  @@index([contaId])
+  @@map("cartoes")
+}
+
+model CategoriaFinanceira {
+  id              String                  @id @default(cuid())
+  familiaId       String
+  nome            String
+  icone           String?
+  cor             String?
+  tipo            TipoCategoriaFinanceira
+  status          StatusCategoria         @default(ATIVA)
+  criadoEm        DateTime                @default(now())
+  atualizadoEm    DateTime                @updatedAt
+  familia         Familia                 @relation(fields: [familiaId], references: [id], onDelete: Cascade)
+  subcategorias   Subcategoria[]
+  lancamentos     Lancamento[]
+  orcamentos      Orcamento[]
+
+  @@unique([familiaId, nome])
+  @@index([familiaId, status])
+  @@map("categorias_financeira")
+}
+
+model Subcategoria {
+  id              String              @id @default(cuid())
+  categoriaId     String
+  nome            String
+  ativo           Boolean             @default(true)
+  criadoEm        DateTime            @default(now())
+  categoria       CategoriaFinanceira @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+  lancamentos     Lancamento[]
+
+  @@unique([categoriaId, nome])
+  @@index([categoriaId])
+  @@map("subcategorias")
+}
+
+model CentroCustoFinanceiro {
+  id            String    @id @default(cuid())
+  familiaId     String
+  nome          String
+  icone         String?
+  cor           String?
+  ativo         Boolean   @default(true)
+  criadoEm      DateTime  @default(now())
+  atualizadoEm  DateTime  @updatedAt
+  familia       Familia   @relation(fields: [familiaId], references: [id], onDelete: Cascade)
+  lancamentos   Lancamento[]
+
+  @@unique([familiaId, nome])
+  @@index([familiaId, ativo])
+  @@map("centros_custo_financeiro")
+}
+
+model Tag {
+  id          String         @id @default(cuid())
+  familiaId   String
+  nome        String
+  cor         String?
+  criadoEm    DateTime       @default(now())
+  familia     Familia        @relation(fields: [familiaId], references: [id], onDelete: Cascade)
+  lancamentos LancamentoTag[]
+
+  @@unique([familiaId, nome])
+  @@index([familiaId])
+  @@map("tags")
+}
+
+model LancamentoTag {
+  id           String     @id @default(cuid())
+  lancamentoId String
+  tagId        String
+  criadoEm     DateTime   @default(now())
+  lancamento   Lancamento @relation(fields: [lancamentoId], references: [id], onDelete: Cascade)
+  tag          Tag        @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([lancamentoId, tagId])
+  @@index([lancamentoId])
+  @@index([tagId])
+  @@map("lancamentos_tag")
+}
+
+model Lancamento {
+  id                    String            @id @default(cuid())
+  familiaId             String
+  criadoPorId           String
+  responsavelId         String
+  tipo                  TipoLancamento
+  titulo                String
+  descricao             String?
+  valor                 Decimal           @db.Decimal(12, 2)
+  moeda                 Moeda             @default(BRL)
+  categoriaId           String?
+  subcategoriaId        String?
+  centroCustoId         String?
+  contaOrigemId         String
+  contaDestinoId        String?
+  cartaoId              String?
+  formaPagamento        FormaPagamento?
+  dataHora              DateTime
+  observacoes           String?
+  status                StatusLancamento  @default(PENDENTE)
+  origem                OrigemLancamento  @default(MANUAL)
+  confirmadoPeloUsuario Boolean           @default(true)
+  observacaoIA          String?
+  confiancaIA           Int?
+  localizacaoId         String?
+  recorrenciaId         String?
+  parcelamentoId        String?
+  numeroParcela         Int?
+  quantidadeParcelas    Int?
+  criadoEm              DateTime          @default(now())
+  atualizadoEm          DateTime          @updatedAt
+  familia               Familia           @relation(fields: [familiaId], references: [id], onDelete: Cascade)
+  criadoPor             MembroFamilia     @relation("lancamentosCriados", fields: [criadoPorId], references: [id])
+  responsavel           MembroFamilia     @relation("lancamentosResponsavel", fields: [responsavelId], references: [id])
+  categoria             CategoriaFinanceira? @relation(fields: [categoriaId], references: [id])
+  subcategoria          Subcategoria?     @relation(fields: [subcategoriaId], references: [id])
+  centroCusto           CentroCustoFinanceiro? @relation(fields: [centroCustoId], references: [id])
+  contaOrigem           Conta             @relation("contaOrigem", fields: [contaOrigemId], references: [id])
+  contaDestino          Conta?            @relation("contaDestino", fields: [contaDestinoId], references: [id])
+  cartao                Cartao?           @relation(fields: [cartaoId], references: [id])
+  localizacao           Localizacao?      @relation(fields: [localizacaoId], references: [id])
+  recorrencia           RecorrenciaFinanceira? @relation("recorrenciaGerada", fields: [recorrenciaId], references: [id])
+  recorrenciaModelo     RecorrenciaFinanceira? @relation("lancamentoModelo")
+  anexos                Anexo[]
+  tags                  LancamentoTag[]
+  historicos            HistoricoLancamento[]
+
+  @@index([familiaId, status])
+  @@index([familiaId, dataHora])
+  @@index([familiaId, tipo])
+  @@index([contaOrigemId])
+  @@index([contaDestinoId])
+  @@index([cartaoId])
+  @@index([responsavelId])
+  @@index([criadoPorId])
+  @@index([categoriaId])
+  @@index([centroCustoId])
+  @@index([recorrenciaId])
+  @@index([parcelamentoId])
+  @@index([confirmadoPeloUsuario])
+  @@map("lancamentos")
+}
+
+model RecorrenciaFinanceira {
+  id                 String                           @id @default(cuid())
+  familiaId          String
+  lancamentoModeloId String   @unique
+  titulo             String
+  frequencia         FrequenciaRecorrenciaFinanceira
+  intervalo          Int                              @default(1)
+  proximaExecucao    DateTime
+  ultimaExecucao     DateTime?
+  ativa              Boolean                          @default(true)
+  criadoEm           DateTime                         @default(now())
+  atualizadoEm       DateTime                         @updatedAt
+  familia            Familia                          @relation(fields: [familiaId], references: [id], onDelete: Cascade)
+  lancamentoModelo   Lancamento                       @relation("lancamentoModelo", fields: [lancamentoModeloId], references: [id])
+  lancamentos        Lancamento[]                     @relation("recorrenciaGerada")
+
+  @@index([familiaId, ativa])
+  @@index([proximaExecucao])
+  @@map("recorrencias_financeira")
+}
+
+model MetaFinanceira {
+  id              String              @id @default(cuid())
+  familiaId       String
+  titulo          String
+  descricao       String?
+  tipo            TipoMetaFinanceira  @default(OBJETIVO)
+  valorObjetivo   Decimal             @db.Decimal(12, 2)
+  valorAtual      Decimal             @default(0) @db.Decimal(12, 2)
+  dataLimite      DateTime?
+  contaDestinoId  String?
+  status          StatusMetaFinanceira @default(EM_ANDAMENTO)
+  imagem          String?
+  criadoEm        DateTime            @default(now())
+  atualizadoEm    DateTime            @updatedAt
+  familia         Familia             @relation(fields: [familiaId], references: [id], onDelete: Cascade)
+  contaDestino    Conta?              @relation(fields: [contaDestinoId], references: [id])
+
+  @@index([familiaId, status])
+  @@map("metas_financeira")
+}
+
+model Orcamento {
+  id            String    @id @default(cuid())
+  familiaId     String
+  categoriaId   String
+  mes           Int
+  ano           Int
+  valorLimite   Decimal   @db.Decimal(12, 2)
+  valorAtual    Decimal   @default(0) @db.Decimal(12, 2)
+  criadoEm      DateTime  @default(now())
+  atualizadoEm  DateTime  @updatedAt
+  familia       Familia   @relation(fields: [familiaId], references: [id], onDelete: Cascade)
+  categoria     CategoriaFinanceira @relation(fields: [categoriaId], references: [id])
+
+  @@unique([familiaId, categoriaId, mes, ano])
+  @@index([familiaId, mes, ano])
+  @@map("orcamentos")
+}
+
+model Localizacao {
+  id          String   @id @default(cuid())
+  nomeLocal   String?
+  latitude    Decimal  @db.Decimal(10, 8)
+  longitude   Decimal  @db.Decimal(11, 8)
+  endereco    String?
+  cidade      String?
+  estado      String?
+  pais        String?
+  criadoEm    DateTime @default(now())
+  lancamentos Lancamento[]
+
+  @@map("localizacoes")
+}
+
+model Anexo {
+  id            String   @id @default(cuid())
+  lancamentoId  String
+  url           String
+  nomeArquivo   String?
+  mimeType      String?
+  tamanho       Int?
+  criadoEm      DateTime @default(now())
+  lancamento    Lancamento @relation(fields: [lancamentoId], references: [id], onDelete: Cascade)
+
+  @@index([lancamentoId])
+  @@map("anexos")
+}
+
+model HistoricoLancamento {
+  id            String   @id @default(cuid())
+  lancamentoId  String
+  usuarioId     String
+  campo         String
+  valorAnterior String?
+  novoValor     String?
+  criadoEm      DateTime @default(now())
+  lancamento    Lancamento @relation(fields: [lancamentoId], references: [id], onDelete: Cascade)
+
+  @@index([lancamentoId])
+  @@index([usuarioId])
+  @@map("historico_lancamento")
 }
