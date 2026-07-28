@@ -19,22 +19,22 @@ export interface Conta {
 
 export interface CriarContaDTO {
   nome: string;
-  instituicao?: string;
+  instituicao?: string | null;
   tipo: TipoConta;
   moeda?: Moeda;
   saldoInicial?: number;
-  cor?: string;
-  icone?: string;
+  cor?: string | null;
+  icone?: string | null;
 }
 
 export interface AtualizarContaDTO {
   nome?: string;
-  instituicao?: string;
+  instituicao?: string | null;
   tipo?: TipoConta;
   moeda?: Moeda;
   saldoInicial?: number;
   saldoAtual?: number;
-  cor?: string;
-  icone?: string;
+  cor?: string | null;
+  icone?: string | null;
   ativo?: boolean;
 }

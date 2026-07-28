@@ -8,12 +8,12 @@ export interface Tag {
 
 export interface CriarTagDTO {
   nome: string;
-  cor?: string;
+  cor?: string | null;
 }
 
 export interface AtualizarTagDTO {
   nome?: string;
-  cor?: string;
+  cor?: string | null;
 }
 
 export interface LancamentoTag {

@@ -76,7 +76,7 @@ export async function estenderRecorrencias(): Promise<{ tarefasProcessadas: numb
     if (novas.length > 0) {
       await tarefaRepository.createExecucoes(
         tarefa.id,
-        novas.map((e) => ({ data: e.data, status: e.status, iteracao: tarefa.cicloIteracao ?? null })),
+        novas.map((e) => ({ data: e.data, status: e.status, iteracao: tarefa.cicloIteracao ?? 0 })),
       );
       geradas += novas.length;
     }

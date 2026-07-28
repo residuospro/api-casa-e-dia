@@ -5,6 +5,7 @@ import familyRoutes from './family.routes';
 import notificationRoutes from './notification.routes';
 import tarefaRoutes from './tarefa.routes';
 import cicloRoutes from './ciclo.routes';
+import financeiroRoutes from './financeiro.routes';
 import { tarefaController } from '../controllers/tarefa.controller';
 import { authMiddleware } from '../middlewares/auth.middleware';
 
@@ -21,6 +22,7 @@ router.use('/users', userRoutes);
 router.use('/families', familyRoutes);
 router.use('/tarefas', tarefaRoutes);
 router.use('/ciclos', cicloRoutes);
+router.use('/financeiro', financeiroRoutes);
 router.use('/notifications', notificationRoutes);
 
 export default router;

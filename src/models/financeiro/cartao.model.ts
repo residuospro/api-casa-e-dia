@@ -20,21 +20,21 @@ export interface CriarCartaoDTO {
   contaId: string;
   nome: string;
   tipo?: TipoCartao;
-  bandeira?: string;
-  limite?: number;
-  fechamentoDia?: number;
-  vencimentoDia?: number;
-  melhorDiaCompra?: number;
+  bandeira?: string | null;
+  limite?: number | null;
+  fechamentoDia?: number | null;
+  vencimentoDia?: number | null;
+  melhorDiaCompra?: number | null;
 }
 
 export interface AtualizarCartaoDTO {
   contaId?: string;
   nome?: string;
   tipo?: TipoCartao;
-  bandeira?: string;
-  limite?: number;
-  fechamentoDia?: number;
-  vencimentoDia?: number;
-  melhorDiaCompra?: number;
+  bandeira?: string | null;
+  limite?: number | null;
+  fechamentoDia?: number | null;
+  vencimentoDia?: number | null;
+  melhorDiaCompra?: number | null;
   ativo?: boolean;
 }

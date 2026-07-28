@@ -11,13 +11,13 @@ export interface CentroCustoFinanceiro {
 
 export interface CriarCentroCustoFinanceiroDTO {
   nome: string;
-  icone?: string;
-  cor?: string;
+  icone?: string | null;
+  cor?: string | null;
 }
 
 export interface AtualizarCentroCustoFinanceiroDTO {
   nome?: string;
-  icone?: string;
-  cor?: string;
+  icone?: string | null;
+  cor?: string | null;
   ativo?: boolean;
 }

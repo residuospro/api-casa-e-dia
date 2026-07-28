@@ -7,6 +7,7 @@ export interface Subcategoria {
 }
 
 export interface CriarSubcategoriaDTO {
+  categoriaId: string;
   nome: string;
 }
 
