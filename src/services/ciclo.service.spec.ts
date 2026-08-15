@@ -257,6 +257,38 @@ describe('CicloService', () => {
       expect(resultado.tarefas).toHaveLength(3);
     });
 
+    it('não deve duplicar execuções de iterações anteriores na segunda rotação', async () => {
+      const ciclo = makeCiclo({ iteracao: 1 });
+      cicloRepository.findById.mockResolvedValue(ciclo);
+      tarefaRepository.findRevezamentoByCiclo.mockResolvedValue([
+        { id: 't1', titulo: 'Lavar louça', responsavelAtualId: 'm1' },
+      ]);
+      familyRepository.findMembrosAtivosByFamilia.mockResolvedValue([
+        { id: 'm1', nome: 'Maria' },
+        { id: 'm2', nome: 'João' },
+      ]);
+      tarefaRepository.updateResponsavel.mockResolvedValue({
+        id: 't1',
+        titulo: 'Lavar louça',
+        responsavelAtualId: 'm2',
+      });
+      tarefaRepository.findExecucoesByTarefa.mockResolvedValue([
+        { data: new Date('2026-07-06T10:00:00'), status: 'CONCLUIDA', iteracao: 0 },
+        { data: new Date('2026-07-08T10:00:00'), status: 'CONCLUIDA', iteracao: 0 },
+        { data: new Date('2026-07-20T10:00:00'), status: 'CONCLUIDA', iteracao: 1 },
+        { data: new Date('2026-07-22T10:00:00'), status: 'ATRASADA', iteracao: 1 },
+      ]);
+      tarefaRepository.createExecucoes.mockResolvedValue({ count: 2 });
+      cicloRepository.findById.mockResolvedValue(makeCiclo({ proximaRenovacao: new Date(), iteracao: 1 }));
+
+      await service.rotacionar('fam-id', 'ciclo-id');
+
+      expect(tarefaRepository.createExecucoes).toHaveBeenCalledWith('t1', [
+        { data: new Date('2026-07-27T10:00:00'), status: 'AGENDADA', iteracao: 2 },
+        { data: new Date('2026-07-29T10:00:00'), status: 'AGENDADA', iteracao: 2 },
+      ]);
+    });
+
     it('deve lançar erro se ciclo não existir', async () => {
       cicloRepository.findById.mockResolvedValue(null);
 

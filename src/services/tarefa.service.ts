@@ -19,12 +19,20 @@ export async function renovarExecucoesTarefa(
   const execucoes = await tarefaRepository.findExecucoesByTarefa(tarefaId);
 
   const naoCanceladas = execucoes.filter((e) => e.status !== 'CANCELADA');
+
+  const iteracaoAnterior = iteracao != null ? iteracao - 1 : null;
+  const temIteracaoInformada = naoCanceladas.some((e) => e.iteracao != null);
+
+  const base = iteracaoAnterior != null && temIteracaoInformada
+    ? naoCanceladas.filter((e) => e.iteracao === iteracaoAnterior)
+    : naoCanceladas;
+
   const novas: { data: Date; status: string; iteracao?: number | null }[] = [];
 
-  if (naoCanceladas.length === 0) {
+  if (base.length === 0) {
     novas.push({ data: new Date(novoInicio), status: 'AGENDADA', iteracao });
   } else {
-    for (const exec of naoCanceladas) {
+    for (const exec of base) {
       const data = new Date(exec.data.getTime() + duracaoDias * 24 * 60 * 60 * 1000);
       novas.push({ data, status: 'AGENDADA', iteracao });
     }

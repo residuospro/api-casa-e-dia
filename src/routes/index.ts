@@ -14,7 +14,11 @@ router.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
-router.post('/scheduler/recorrencia', authMiddleware, tarefaController.executarSchedulerRecorrencia);
+router.post(
+  '/scheduler/recorrencia',
+  authMiddleware,
+  tarefaController.executarSchedulerRecorrencia,
+);
 
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
