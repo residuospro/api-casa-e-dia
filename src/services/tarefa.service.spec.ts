@@ -417,6 +417,115 @@ describe('TarefaService', () => {
         expect.objectContaining({ responsavelAtualId: 'm1' }),
       );
     });
+
+    it('deve permitir criar execução entre renovadoEm e proximaRenovacao', async () => {
+      familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id', nome: 'Família Teste' });
+      cicloRepository.findById.mockResolvedValue({
+        id: 'ciclo-1',
+        participantes: [],
+        inicio: new Date('2026-07-01T00:00:00'),
+        renovadoEm: new Date('2026-08-01T00:00:00'),
+        proximaRenovacao: new Date('2026-08-27T00:00:00'),
+        duracaoDias: 30,
+      });
+      tarefaRepository.create.mockResolvedValue(makeTarefa());
+
+      await expect(
+        service.criar({
+          familiaId: 'fam-id',
+          titulo: 'Tarefa do ciclo',
+          tipo: TipoTarefa.FAMILIAR,
+          categoria: Categoria.CASA,
+          modoDistribuicao: ModoDistribuicao.REVEZAMENTO,
+          cicloId: 'ciclo-1',
+          criadoPorId: 'criador-id',
+          execucoes: [
+            { data: new Date('2026-08-10T18:00:00'), status: StatusExecucao.AGENDADA, pontosObtidos: null },
+          ],
+        }),
+      ).resolves.toBeDefined();
+    });
+
+    it('deve lançar erro ao criar execução antes de renovadoEm', async () => {
+      familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id', nome: 'Família Teste' });
+      cicloRepository.findById.mockResolvedValue({
+        id: 'ciclo-1',
+        participantes: [],
+        inicio: new Date('2026-07-01T00:00:00'),
+        renovadoEm: new Date('2026-08-01T00:00:00'),
+        proximaRenovacao: new Date('2026-08-27T00:00:00'),
+        duracaoDias: 30,
+      });
+
+      await expect(
+        service.criar({
+          familiaId: 'fam-id',
+          titulo: 'Tarefa do ciclo',
+          tipo: TipoTarefa.FAMILIAR,
+          categoria: Categoria.CASA,
+          modoDistribuicao: ModoDistribuicao.REVEZAMENTO,
+          cicloId: 'ciclo-1',
+          criadoPorId: 'criador-id',
+          execucoes: [
+            { data: new Date('2026-07-15T18:00:00'), status: StatusExecucao.AGENDADA, pontosObtidos: null },
+          ],
+        }),
+      ).rejects.toThrow('Execução com data anterior à renovação do ciclo');
+    });
+
+    it('deve lançar erro ao criar execução após proximaRenovacao', async () => {
+      familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id', nome: 'Família Teste' });
+      cicloRepository.findById.mockResolvedValue({
+        id: 'ciclo-1',
+        participantes: [],
+        inicio: new Date('2026-07-01T00:00:00'),
+        renovadoEm: new Date('2026-08-01T00:00:00'),
+        proximaRenovacao: new Date('2026-08-27T00:00:00'),
+        duracaoDias: 30,
+      });
+
+      await expect(
+        service.criar({
+          familiaId: 'fam-id',
+          titulo: 'Tarefa do ciclo',
+          tipo: TipoTarefa.FAMILIAR,
+          categoria: Categoria.CASA,
+          modoDistribuicao: ModoDistribuicao.REVEZAMENTO,
+          cicloId: 'ciclo-1',
+          criadoPorId: 'criador-id',
+          execucoes: [
+            { data: new Date('2026-08-28T18:00:00'), status: StatusExecucao.AGENDADA, pontosObtidos: null },
+          ],
+        }),
+      ).rejects.toThrow('Execução com data após o vencimento do ciclo');
+    });
+
+    it('deve lançar erro ao criar execução antes do inicio sem renovadoEm', async () => {
+      familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id', nome: 'Família Teste' });
+      cicloRepository.findById.mockResolvedValue({
+        id: 'ciclo-1',
+        participantes: [],
+        inicio: new Date('2026-08-10T00:00:00'),
+        renovadoEm: null,
+        proximaRenovacao: new Date('2026-08-27T00:00:00'),
+        duracaoDias: 17,
+      });
+
+      await expect(
+        service.criar({
+          familiaId: 'fam-id',
+          titulo: 'Tarefa do ciclo',
+          tipo: TipoTarefa.FAMILIAR,
+          categoria: Categoria.CASA,
+          modoDistribuicao: ModoDistribuicao.REVEZAMENTO,
+          cicloId: 'ciclo-1',
+          criadoPorId: 'criador-id',
+          execucoes: [
+            { data: new Date('2026-08-01T18:00:00'), status: StatusExecucao.AGENDADA, pontosObtidos: null },
+          ],
+        }),
+      ).rejects.toThrow('Execução com data anterior ao início do ciclo');
+    });
   });
 
   describe('listar', () => {

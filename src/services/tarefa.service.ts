@@ -124,15 +124,15 @@ export function gerarExecucoesRecorrentes(
   return execucoes;
 }
 
-function calcularDataLimiteCiclo(ciclo: { inicio: Date; proximaRenovacao: Date | null }): Date {
-  return ciclo.proximaRenovacao
-    ? new Date(ciclo.proximaRenovacao)
+function calcularDataLimiteInferiorCiclo(ciclo: { inicio: Date; renovadoEm: Date | null }): Date {
+  return ciclo.renovadoEm
+    ? new Date(ciclo.renovadoEm)
     : new Date(ciclo.inicio);
 }
 
 function validarDatasExecucoes(
   execucoes: { data: Date }[],
-  ciclo: { inicio: Date; proximaRenovacao: Date | null } | null,
+  ciclo: { inicio: Date; renovadoEm: Date | null; proximaRenovacao: Date | null } | null,
 ): void {
   if (!execucoes || execucoes.length === 0) return;
 
@@ -140,10 +140,16 @@ function validarDatasExecucoes(
 
   for (const execucao of execucoes) {
     if (ciclo) {
-      const limiteInferior = calcularDataLimiteCiclo(ciclo);
+      const limiteInferior = calcularDataLimiteInferiorCiclo(ciclo);
       if (execucao.data < limiteInferior) {
-        const nomeLimite = ciclo.proximaRenovacao ? 'renovação' : 'início';
-        throw new AppError(`Execução com data anterior ao ${nomeLimite} do ciclo`, 400);
+        throw new AppError(
+          `Execução com data anterior ${ciclo.renovadoEm ? 'à renovação' : 'ao início'} do ciclo`,
+          400,
+        );
+      }
+
+      if (ciclo.proximaRenovacao && execucao.data > new Date(ciclo.proximaRenovacao)) {
+        throw new AppError('Execução com data após o vencimento do ciclo', 400);
       }
     } else {
       if (execucao.data < agora) {
@@ -284,8 +290,8 @@ export class TarefaService {
 
     if (dto.recorrencia) {
       if (cicloRevezamento) {
-        const limiteInferior = cicloRevezamento.proximaRenovacao
-          ? new Date(cicloRevezamento.proximaRenovacao)
+        const limiteInferior = cicloRevezamento.renovadoEm
+          ? new Date(cicloRevezamento.renovadoEm)
           : new Date(cicloRevezamento.inicio);
 
         const dataInicioRecorrencia = dto.recorrencia.dataInicio
@@ -293,8 +299,10 @@ export class TarefaService {
           : new Date();
 
         if (dataInicioRecorrencia < limiteInferior) {
-          const nomeLimite = cicloRevezamento.proximaRenovacao ? 'renovação' : 'início';
-          throw new AppError(`Recorrência com data anterior ao ${nomeLimite} do ciclo`, 400);
+          throw new AppError(
+            `Recorrência com data anterior ${cicloRevezamento.renovadoEm ? 'à renovação' : 'ao início'} do ciclo`,
+            400,
+          );
         }
       }
 
@@ -581,14 +589,15 @@ export class TarefaService {
       const mudou = JSON.stringify(recorrenciaAntiga) !== JSON.stringify(recorrenciaNova);
 
       if (mudou && recorrenciaNova) {
-        let cicloTarefa: { inicio: Date; proximaRenovacao: Date | null } | null = null;
+        let cicloTarefa: { inicio: Date; renovadoEm: Date | null; proximaRenovacao: Date | null } | null = null;
         if (tarefa.cicloId) {
           cicloTarefa = await cicloRepository.findById(tarefa.cicloId) as any;
         }
 
         let diasAFrente = 7;
+        let fimCiclo: Date | null = null;
         if (cicloTarefa) {
-          const fimCiclo = cicloTarefa.proximaRenovacao
+          fimCiclo = cicloTarefa.proximaRenovacao
             ? new Date(cicloTarefa.proximaRenovacao)
             : new Date(cicloTarefa.inicio.getTime() + (cicloTarefa as any).duracaoDias * 24 * 60 * 60 * 1000);
           const agora = new Date();
@@ -602,7 +611,9 @@ export class TarefaService {
 
         const geradas = gerarExecucoesRecorrentes(recorrenciaNova, hoje, diasAFrente);
         const agoraAtualizar = new Date();
-        const futurasAtualizar = geradas.filter((e) => e.data >= agoraAtualizar);
+        const futurasAtualizar = geradas.filter(
+          (e) => e.data >= agoraAtualizar && (!fimCiclo || e.data <= fimCiclo),
+        );
         validarDatasExecucoes(futurasAtualizar, cicloTarefa);
         if (futurasAtualizar.length > 0) {
           const comExecutor = atribuirExecucoes(futurasAtualizar, responsavelFinal, participantesFinais);
@@ -738,7 +749,7 @@ export class TarefaService {
       throw new AppError('Execução não encontrada', 404);
     }
 
-    let cicloTarefa: { inicio: Date; proximaRenovacao: Date | null } | null = null;
+    let cicloTarefa: { inicio: Date; renovadoEm: Date | null; proximaRenovacao: Date | null } | null = null;
     if (execucao.tarefa.cicloId) {
       cicloTarefa = await cicloRepository.findById(execucao.tarefa.cicloId) as any;
     }
