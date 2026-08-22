@@ -343,6 +343,49 @@ export const tarefaRepository = {
     });
   },
 
+  findExecucoesPaginadasByTarefa(tarefaId: string, pagina: number, porPagina: number) {
+    const offset = (pagina - 1) * porPagina;
+    return prisma.$queryRawUnsafe<
+      Array<{
+        id: string;
+        tarefaId: string;
+        data: Date;
+        status: StatusExecucao;
+        pontosObtidos: number | null;
+        concluidoPorId: string | null;
+        concluidoEm: Date | null;
+        iteracao: number | null;
+        executorId: string | null;
+        notificacaoCriada: boolean;
+        notificacaoAtrasada: boolean;
+        criadoEm: Date;
+      }>
+    >(
+      `SELECT "id", "tarefaId", "data", "status", "pontosObtidos", "concluidoPorId", "concluidoEm",
+              "iteracao", "executorId", "notificacaoCriada", "notificacaoAtrasada", "criadoEm"
+       FROM "execucoes_tarefa"
+       WHERE "tarefaId" = $1
+       ORDER BY
+         CASE "status"
+           WHEN 'ATRASADA' THEN 0
+           WHEN 'AGENDADA' THEN 1
+           ELSE 2
+         END ASC,
+         CASE WHEN "status" IN ('ATRASADA', 'AGENDADA')
+           THEN EXTRACT(EPOCH FROM "data")::bigint
+           ELSE -EXTRACT(EPOCH FROM "data")::bigint
+         END ASC
+       LIMIT $2 OFFSET $3`,
+      tarefaId,
+      porPagina,
+      offset,
+    );
+  },
+
+  countExecucoesByTarefa(tarefaId: string) {
+    return prisma.execucaoTarefa.count({ where: { tarefaId } });
+  },
+
   deleteFutureAgendadas(tarefaId: string, desde: Date) {
     return prisma.execucaoTarefa.deleteMany({
       where: {

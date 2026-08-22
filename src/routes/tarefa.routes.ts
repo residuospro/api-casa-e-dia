@@ -9,6 +9,7 @@ router.get('/:familiaId/tarefas', authMiddleware, tarefaController.listar);
 router.get('/:familiaId/tarefas/resumo', authMiddleware, tarefaController.resumo);
 router.get('/:familiaId/tarefas/urgentes', authMiddleware, tarefaController.urgentes);
 router.get('/:familiaId/tarefas/:id', authMiddleware, tarefaController.obter);
+router.get('/:familiaId/tarefas/:id/execucoes', authMiddleware, tarefaController.listarExecucoes);
 router.put('/:familiaId/tarefas/:id', authMiddleware, tarefaController.atualizar);
 router.delete('/:familiaId/tarefas/:id', authMiddleware, tarefaController.remover);
 router.post('/:familiaId/tarefas/:id/duplicar', authMiddleware, tarefaController.duplicar);

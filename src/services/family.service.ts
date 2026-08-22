@@ -7,6 +7,38 @@ import { authRepository } from '../repositories/auth.repository';
 import { notificationService } from './notification.service';
 import { generateAvatar } from '../utils/avatar';
 
+const MEMBROS_CACHE_TTL_MS = 60 * 1000;
+const membrosCache = new Map<string, { dados: unknown; expiraEm: number }>();
+
+function chaveCache(prefixo: string, familiaId: string): string {
+  return `${prefixo}:${familiaId}`;
+}
+
+function obterCacheMembros<T>(prefixo: string, familiaId: string): T | null {
+  const chave = chaveCache(prefixo, familiaId);
+  const entrada = membrosCache.get(chave);
+  if (!entrada) return null;
+
+  if (entrada.expiraEm < Date.now()) {
+    membrosCache.delete(chave);
+    return null;
+  }
+
+  return entrada.dados as T;
+}
+
+function definirCacheMembros(prefixo: string, familiaId: string, dados: unknown): void {
+  membrosCache.set(chaveCache(prefixo, familiaId), {
+    dados,
+    expiraEm: Date.now() + MEMBROS_CACHE_TTL_MS,
+  });
+}
+
+export function invalidarCacheMembros(familiaId: string): void {
+  membrosCache.delete(chaveCache('membros', familiaId));
+  membrosCache.delete(chaveCache('opcoes', familiaId));
+}
+
 function mapMembro(m: any) {
   const usuario = m.usuario
     ? {
@@ -97,6 +129,7 @@ export class FamilyService {
     });
 
     const membroCompleto = await familyRepository.findMembroById(membro.id);
+    invalidarCacheMembros(dto.familiaId);
 
     return {
       message: 'Convite enviado com sucesso',
@@ -129,6 +162,7 @@ export class FamilyService {
       conviteEnviado: true,
       status: 'ACEITO',
     });
+    invalidarCacheMembros(dto.familiaId);
 
     return { message: 'Dependente cadastrado com sucesso', membro: mapMembro(membro) };
   }
@@ -153,6 +187,7 @@ export class FamilyService {
 
     const status = aceito ? 'ACEITO' : 'RECUSADO';
     const atualizado = await familyRepository.updateMembroStatus(membroId, status);
+    invalidarCacheMembros(membro.familiaId);
 
     return {
       message: `Convite ${aceito ? 'aceito' : 'recusado'} com sucesso`,
@@ -177,11 +212,15 @@ export class FamilyService {
 
     await sendInviteEmail(membro.usuario.email, membro.usuario.nome, familia.nome);
     await familyRepository.updateConviteEnviado(membroId);
+    invalidarCacheMembros(familiaId);
 
     return { message: 'Convite reenviado com sucesso' };
   }
 
   async listarMembros(familiaId: string) {
+    const emCache = obterCacheMembros<any[]>('membros', familiaId);
+    if (emCache) return emCache;
+
     const familia = await familyRepository.findFamiliaById(familiaId);
     if (!familia) {
       throw new AppError('Família não encontrada', 404);
@@ -189,10 +228,15 @@ export class FamilyService {
 
     const membros = await familyRepository.findMembrosByFamilia(familiaId);
 
-    return membros.map(mapMembro);
+    const resultado = membros.map(mapMembro);
+    definirCacheMembros('membros', familiaId, resultado);
+    return resultado;
   }
 
   async listarOpcoesMembros(familiaId: string) {
+    const emCache = obterCacheMembros<any[]>('opcoes', familiaId);
+    if (emCache) return emCache;
+
     const familia = await familyRepository.findFamiliaById(familiaId);
     if (!familia) {
       throw new AppError('Família não encontrada', 404);
@@ -200,11 +244,13 @@ export class FamilyService {
 
     const membros = await familyRepository.findMembrosByFamilia(familiaId);
 
-    return membros.map((m) => ({
+    const resultado = membros.map((m) => ({
       text: m.nome ?? m.usuario?.nome ?? 'Sem nome',
       value: m.id,
       fotoPerfil: m.fotoPerfil ?? m.usuario?.fotoPerfil ?? generateAvatar(m.nome ?? m.usuario?.nome ?? 'Sem nome', m.genero ?? m.usuario?.genero ?? null),
     }));
+    definirCacheMembros('opcoes', familiaId, resultado);
+    return resultado;
   }
 
   async buscarMembros(familiaId: string, query: string) {
@@ -272,6 +318,7 @@ export class FamilyService {
     }
 
     const atualizado = await familyRepository.updateMembro(membroId, dto);
+    invalidarCacheMembros(familiaId);
 
     return mapMembro(atualizado);
   }
@@ -288,6 +335,7 @@ export class FamilyService {
     }
 
     await familyRepository.deleteMembro(membroId);
+    invalidarCacheMembros(familiaId);
 
     return { message: 'Membro removido com sucesso' };
   }
@@ -357,6 +405,7 @@ export class FamilyService {
       await tx.membroFamilia.deleteMany({ where: { familiaId } });
       await tx.familia.delete({ where: { id: familiaId } });
     });
+    invalidarCacheMembros(familiaId);
 
     return { message: 'Família removida com sucesso' };
   }

@@ -490,6 +490,45 @@ export class TarefaService {
     return transformTarefa(tarefa);
   }
 
+  async listarExecucoes(
+    familiaId: string,
+    tarefaId: string,
+    pagina: number,
+    porPagina: number,
+    membroId?: string,
+    permissao?: string,
+  ) {
+    const tarefa = await tarefaRepository.findById(tarefaId);
+    if (!tarefa || tarefa.familiaId !== familiaId) {
+      throw new AppError('Tarefa não encontrada', 404);
+    }
+
+    if (membroId && permissao && permissao !== 'ADMIN') {
+      const tarefaAny = tarefa as any;
+      const ehCriador = tarefaAny.criadoPorId === membroId;
+      const ehResponsavel = tarefaAny.responsavelAtualId === membroId;
+      const ehParticipante = tarefaAny.participantes?.some((p: any) => p.membroId === membroId);
+      if (!ehCriador && !ehResponsavel && !ehParticipante) {
+        throw new AppError('Tarefa não encontrada', 404);
+      }
+    }
+
+    const [data, total] = await Promise.all([
+      tarefaRepository.findExecucoesPaginadasByTarefa(tarefaId, pagina, porPagina),
+      tarefaRepository.countExecucoesByTarefa(tarefaId),
+    ]);
+
+    return {
+      paginacao: {
+        total,
+        pagina,
+        por_pagina: porPagina,
+        ultima_pagina: Math.ceil(total / porPagina),
+      },
+      data,
+    };
+  }
+
   async atualizar(familiaId: string, tarefaId: string, dto: AtualizarTarefaDTO) {
     const tarefa = await tarefaRepository.findById(tarefaId);
     if (!tarefa || tarefa.familiaId !== familiaId) {

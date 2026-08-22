@@ -123,6 +123,41 @@ export const tarefaController = {
     }
   },
 
+  async listarExecucoes(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { familiaId, id } = req.params;
+
+      const membro = await familyRepository.findMembroByUsuarioAndFamilia(
+        req.usuario!.id,
+        familiaId,
+      );
+      if (!membro) {
+        res.status(403).json({ error: 'Forbidden', message: 'Você não é membro desta família' });
+        return;
+      }
+
+      const query = req.query as Record<string, unknown>;
+      const paginacao = query.paginacao as Record<string, string> | undefined;
+
+      const rawPagina = paginacao?.pagina ?? query.pagina ?? query.page;
+      const rawPorPagina = paginacao?.por_pagina ?? query.por_pagina ?? query.porPagina;
+      const pagina = Math.max(1, Number(rawPagina) || 1);
+      const porPagina = Math.min(100, Math.max(1, Number(rawPorPagina) || 5));
+
+      const resultado = await tarefaService.listarExecucoes(
+        familiaId,
+        id,
+        pagina,
+        porPagina,
+        membro.id,
+        membro.permissao ?? undefined,
+      );
+      res.json(resultado);
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async atualizar(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { familiaId, id } = req.params;
