@@ -507,6 +507,7 @@ model Lancamento {
   confirmadoPeloUsuario Boolean           @default(true)
   observacaoIA          String?
   confiancaIA           Int?
+  localizacao           String?
   localizacaoId         String?
   recorrenciaId         String?
   parcelamentoId        String?
@@ -523,7 +524,7 @@ model Lancamento {
   contaOrigem           Conta             @relation("contaOrigem", fields: [contaOrigemId], references: [id])
   contaDestino          Conta?            @relation("contaDestino", fields: [contaDestinoId], references: [id])
   cartao                Cartao?           @relation(fields: [cartaoId], references: [id])
-  localizacao           Localizacao?      @relation(fields: [localizacaoId], references: [id])
+  localizacaoVinculada  Localizacao?      @relation(fields: [localizacaoId], references: [id])
   recorrencia           RecorrenciaFinanceira? @relation("recorrenciaGerada", fields: [recorrenciaId], references: [id])
   recorrenciaModelo     RecorrenciaFinanceira? @relation("lancamentoModelo")
   anexos                Anexo[]

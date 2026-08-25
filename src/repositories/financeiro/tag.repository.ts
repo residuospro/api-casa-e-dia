@@ -13,6 +13,10 @@ export const tagRepository = {
     return prisma.tag.findUnique({ where: { id } });
   },
 
+  findByIds(ids: string[]) {
+    return prisma.tag.findMany({ where: { id: { in: ids } } });
+  },
+
   findByFamilia(familiaId: string) {
     return prisma.tag.findMany({
       where: { familiaId },

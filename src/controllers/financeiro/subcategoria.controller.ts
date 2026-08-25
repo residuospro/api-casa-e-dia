@@ -29,6 +29,28 @@ export const subcategoriaController = {
     }
   },
 
+  async listar(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { familiaId } = req.params;
+      const query = req.query as Record<string, unknown>;
+
+      const membro = await familyRepository.findMembroByUsuarioAndFamilia(req.usuario!.id, familiaId);
+      if (!membro) {
+        res.status(403).json({ error: 'Forbidden', message: 'Voce nao e membro desta familia' });
+        return;
+      }
+
+      const { options, params } = parseListagemQuery(query);
+      const filtro = query.filtro as Record<string, string | string[]> | undefined;
+      const ordenacao = query.ordenacao as { coluna: string; direcao: 'asc' | 'desc' }[] | undefined;
+
+      const resultado = await subcategoriaService.listar(familiaId, options, params, filtro, ordenacao);
+      res.json(resultado);
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async listarPorCategoria(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { familiaId, categoriaId } = req.params;

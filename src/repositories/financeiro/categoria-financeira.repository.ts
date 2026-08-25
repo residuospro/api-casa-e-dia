@@ -19,6 +19,10 @@ export const categoriaFinanceiraRepository = {
     return prisma.categoriaFinanceira.findUnique({ where: { id } });
   },
 
+  findByIds(ids: string[]) {
+    return prisma.categoriaFinanceira.findMany({ where: { id: { in: ids } } });
+  },
+
   findByFamilia(familiaId: string, incluirArquivadas = false) {
     return prisma.categoriaFinanceira.findMany({
       where: {

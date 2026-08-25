@@ -33,6 +33,28 @@ export const subcategoriaRepository = {
     return { data, total };
   },
 
+  async findByFamiliaWithFilters(familiaId: string, options: ListagemOptions) {
+    const baseWhere: Record<string, unknown> = {
+      categoria: { familiaId },
+    };
+    const where = buildWhereClause(baseWhere, options.filtro);
+    const orderBy = buildOrderBy(options.ordenacao, 'nome');
+    const skip = (options.pagina - 1) * options.porPagina;
+
+    const [data, total] = await Promise.all([
+      prisma.subcategoria.findMany({
+        where,
+        orderBy,
+        skip,
+        take: options.porPagina,
+        include: { categoria: { select: { id: true, nome: true } } },
+      }),
+      prisma.subcategoria.count({ where }),
+    ]);
+
+    return { data, total };
+  },
+
   findByCategoriaAndNome(categoriaId: string, nome: string) {
     return prisma.subcategoria.findFirst({ where: { categoriaId, nome } });
   },

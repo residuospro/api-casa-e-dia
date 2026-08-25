@@ -5,6 +5,7 @@ import { categoriaFinanceiraController } from '../controllers/financeiro/categor
 import { subcategoriaController } from '../controllers/financeiro/subcategoria.controller';
 import { centroCustoController } from '../controllers/financeiro/centro-custo.controller';
 import { tagController } from '../controllers/financeiro/tag.controller';
+import { lancamentoController } from '../controllers/financeiro/lancamento.controller';
 import { financeiroOpcoesController } from '../controllers/financeiro/financeiro-opcoes.controller';
 import { authMiddleware } from '../middlewares/auth.middleware';
 
@@ -35,8 +36,9 @@ router.put('/:familiaId/financeiro/categorias/:id', authMiddleware, categoriaFin
 router.delete('/:familiaId/financeiro/categorias/:id', authMiddleware, categoriaFinanceiraController.remover);
 
 // Subcategorias
-router.post('/:familiaId/financeiro/subcategorias', authMiddleware, subcategoriaController.criar);
-router.get('/:familiaId/financeiro/categorias/:categoriaId/subcategorias', authMiddleware, subcategoriaController.listarPorCategoria);
+  router.post('/:familiaId/financeiro/subcategorias', authMiddleware, subcategoriaController.criar);
+  router.get('/:familiaId/financeiro/subcategorias', authMiddleware, subcategoriaController.listar);
+  router.get('/:familiaId/financeiro/categorias/:categoriaId/subcategorias', authMiddleware, subcategoriaController.listarPorCategoria);
 router.get('/:familiaId/financeiro/subcategorias/:id', authMiddleware, subcategoriaController.obter);
 router.put('/:familiaId/financeiro/subcategorias/:id', authMiddleware, subcategoriaController.atualizar);
 router.delete('/:familiaId/financeiro/subcategorias/:id', authMiddleware, subcategoriaController.remover);
@@ -54,5 +56,18 @@ router.get('/:familiaId/financeiro/tags', authMiddleware, tagController.listar);
 router.get('/:familiaId/financeiro/tags/:id', authMiddleware, tagController.obter);
 router.put('/:familiaId/financeiro/tags/:id', authMiddleware, tagController.atualizar);
 router.delete('/:familiaId/financeiro/tags/:id', authMiddleware, tagController.remover);
+
+// Lancamentos (resumos e agrupamentos antes de /:id para nao colidir)
+router.post('/:familiaId/financeiro/lancamentos', authMiddleware, lancamentoController.criar);
+router.get('/:familiaId/financeiro/lancamentos', authMiddleware, lancamentoController.listar);
+router.get('/:familiaId/financeiro/lancamentos/resumo', authMiddleware, lancamentoController.resumo);
+router.get('/:familiaId/financeiro/lancamentos/agrupamentos/categoria', authMiddleware, lancamentoController.agruparPorCategoria);
+router.get('/:familiaId/financeiro/lancamentos/agrupamentos/conta', authMiddleware, lancamentoController.agruparPorConta);
+router.get('/:familiaId/financeiro/lancamentos/agrupamentos/forma-pagamento', authMiddleware, lancamentoController.agruparPorFormaPagamento);
+router.get('/:familiaId/financeiro/lancamentos/agrupamentos/periodo', authMiddleware, lancamentoController.agruparPorPeriodo);
+router.get('/:familiaId/financeiro/lancamentos/:id', authMiddleware, lancamentoController.obter);
+router.put('/:familiaId/financeiro/lancamentos/:id', authMiddleware, lancamentoController.atualizar);
+router.patch('/:familiaId/financeiro/lancamentos/:id/status', authMiddleware, lancamentoController.alterarStatus);
+router.delete('/:familiaId/financeiro/lancamentos/:id', authMiddleware, lancamentoController.remover);
 
 export default router;

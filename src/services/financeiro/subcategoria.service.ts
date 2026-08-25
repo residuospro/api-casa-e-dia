@@ -19,6 +19,11 @@ export class SubcategoriaService {
     return subcategoriaRepository.create(dto.categoriaId, dto);
   }
 
+  async listar(familiaId: string, options: ListagemOptions, params: { pagina: number; por_pagina: number }, filtro?: Record<string, string | string[]>, ordenacao?: { coluna: string; direcao: 'asc' | 'desc' }[]) {
+    const { data, total } = await subcategoriaRepository.findByFamiliaWithFilters(familiaId, options);
+    return paginatedResponse(data, total, options, params, filtro, ordenacao);
+  }
+
   async listarPorCategoria(familiaId: string, categoriaId: string, options: ListagemOptions, params: { pagina: number; por_pagina: number }, filtro?: Record<string, string | string[]>, ordenacao?: { coluna: string; direcao: 'asc' | 'desc' }[]) {
     const categoria = await categoriaFinanceiraRepository.findById(categoriaId);
     if (!categoria || categoria.familiaId !== familiaId) {

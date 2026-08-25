@@ -31,7 +31,7 @@ export const cartaoRepository = {
   },
 
   async findByFamiliaWithFilters(familiaId: string, options: ListagemOptions) {
-    const where = buildWhereClause({ familiaId, ativo: true }, options.filtro);
+    const where = buildWhereClause({ familiaId }, options.filtro);
     const orderBy = buildOrderBy(options.ordenacao, 'nome');
     const skip = (options.pagina - 1) * options.porPagina;
 
