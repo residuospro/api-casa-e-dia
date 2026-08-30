@@ -122,6 +122,8 @@ export const lancamentoRepository = {
       status: StatusLancamento;
       origem: OrigemLancamento;
       tagsIds?: string[];
+      recorrenciaId?: string | null;
+      orcamentoId?: string | null;
     },
   ) {
     return tx.lancamento.create({
@@ -145,6 +147,8 @@ export const lancamentoRepository = {
         observacoes: dados.observacoes ?? null,
         status: dados.status,
         origem: dados.origem,
+        recorrenciaId: dados.recorrenciaId ?? null,
+        orcamentoId: dados.orcamentoId ?? null,
         localizacao: dados.localizacao ?? null,
         tags: dados.tagsIds?.length ? { create: dados.tagsIds.map((tagId) => ({ tagId })) } : undefined,
       },

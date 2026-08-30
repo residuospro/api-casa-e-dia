@@ -157,21 +157,27 @@ enum StatusMetaFinanceira {
   CANCELADA
 }
 
+enum TipoMovimentacaoMeta {
+  ENTRADA
+  SAIDA
+}
+
 model Usuario {
-  id                  String          @id @default(cuid())
-  nome                String
-  email               String          @unique
-  senha               String
-  celular             String?
-  fotoPerfil          String?
-  genero              Genero?
-  primeiroAcesso      Boolean         @default(true)
-  tokenPrimeiroAcesso String?
-  tokenExpiraEm       DateTime?
-  criadoEm            DateTime        @default(now())
-  membros             MembroFamilia[]
-  notificacoes        Notificacao[]
-  dispositivosPush    DispositivoPush[]
+  id                     String                    @id @default(cuid())
+  nome                   String
+  email                  String                    @unique
+  senha                  String
+  celular                String?
+  fotoPerfil             String?
+  genero                 Genero?
+  primeiroAcesso         Boolean                   @default(true)
+  tokenPrimeiroAcesso    String?
+  tokenExpiraEm          DateTime?
+  criadoEm               DateTime                  @default(now())
+  membros                MembroFamilia[]
+  notificacoes           Notificacao[]
+  dispositivosPush       DispositivoPush[]
+  historicosMetasFinanceira HistoricoMetaFinanceira[]
 
   @@map("usuarios")
 }
@@ -376,6 +382,7 @@ model Conta {
   lancamentosOrigem   Lancamento[] @relation("contaOrigem")
   lancamentosDestino  Lancamento[] @relation("contaDestino")
   metas           MetaFinanceira[]
+  orcamentos      Orcamento[]
 
   @@index([familiaId, ativo])
   @@map("contas")
@@ -513,6 +520,7 @@ model Lancamento {
   parcelamentoId        String?
   numeroParcela         Int?
   quantidadeParcelas    Int?
+  orcamentoId           String?
   criadoEm              DateTime          @default(now())
   atualizadoEm          DateTime          @updatedAt
   familia               Familia           @relation(fields: [familiaId], references: [id], onDelete: Cascade)
@@ -527,6 +535,7 @@ model Lancamento {
   localizacaoVinculada  Localizacao?      @relation(fields: [localizacaoId], references: [id])
   recorrencia           RecorrenciaFinanceira? @relation("recorrenciaGerada", fields: [recorrenciaId], references: [id])
   recorrenciaModelo     RecorrenciaFinanceira? @relation("lancamentoModelo")
+  orcamento             Orcamento?    @relation(fields: [orcamentoId], references: [id])
   anexos                Anexo[]
   tags                  LancamentoTag[]
   historicos            HistoricoLancamento[]
@@ -543,6 +552,7 @@ model Lancamento {
   @@index([centroCustoId])
   @@index([recorrenciaId])
   @@index([parcelamentoId])
+  @@index([orcamentoId])
   @@index([confirmadoPeloUsuario])
   @@map("lancamentos")
 }
@@ -584,15 +594,35 @@ model MetaFinanceira {
   atualizadoEm    DateTime            @updatedAt
   familia         Familia             @relation(fields: [familiaId], references: [id], onDelete: Cascade)
   contaDestino    Conta?              @relation(fields: [contaDestinoId], references: [id])
+  movimentacoes   HistoricoMetaFinanceira[]
 
   @@index([familiaId, status])
   @@map("metas_financeira")
+}
+
+model HistoricoMetaFinanceira {
+  id               String                 @id @default(cuid())
+  metaFinanceiraId String
+  usuarioId        String
+  tipo             TipoMovimentacaoMeta
+  valor            Decimal                @db.Decimal(12, 2)
+  saldoAnterior    Decimal                @db.Decimal(12, 2)
+  saldoNovo        Decimal                @db.Decimal(12, 2)
+  observacao       String?
+  criadoEm         DateTime               @default(now())
+  metaFinanceira   MetaFinanceira         @relation(fields: [metaFinanceiraId], references: [id], onDelete: Cascade)
+  usuario          Usuario                @relation(fields: [usuarioId], references: [id])
+
+  @@index([metaFinanceiraId])
+  @@index([usuarioId])
+  @@map("historico_meta_financeira")
 }
 
 model Orcamento {
   id            String    @id @default(cuid())
   familiaId     String
   categoriaId   String
+  contaId       String
   mes           Int
   ano           Int
   valorLimite   Decimal   @db.Decimal(12, 2)
@@ -601,9 +631,12 @@ model Orcamento {
   atualizadoEm  DateTime  @updatedAt
   familia       Familia   @relation(fields: [familiaId], references: [id], onDelete: Cascade)
   categoria     CategoriaFinanceira @relation(fields: [categoriaId], references: [id])
+  conta         Conta     @relation(fields: [contaId], references: [id])
+  lancamentos   Lancamento[]
 
   @@unique([familiaId, categoriaId, mes, ano])
   @@index([familiaId, mes, ano])
+  @@index([contaId])
   @@map("orcamentos")
 }
 

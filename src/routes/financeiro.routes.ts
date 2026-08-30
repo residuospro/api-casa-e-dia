@@ -6,6 +6,9 @@ import { subcategoriaController } from '../controllers/financeiro/subcategoria.c
 import { centroCustoController } from '../controllers/financeiro/centro-custo.controller';
 import { tagController } from '../controllers/financeiro/tag.controller';
 import { lancamentoController } from '../controllers/financeiro/lancamento.controller';
+import { recorrenciaFinanceiraController } from '../controllers/financeiro/recorrencia-financeira.controller';
+import { metaFinanceiraController } from '../controllers/financeiro/meta-financeira.controller';
+import { orcamentoController } from '../controllers/financeiro/orcamento.controller';
 import { financeiroOpcoesController } from '../controllers/financeiro/financeiro-opcoes.controller';
 import { authMiddleware } from '../middlewares/auth.middleware';
 
@@ -69,5 +72,34 @@ router.get('/:familiaId/financeiro/lancamentos/:id', authMiddleware, lancamentoC
 router.put('/:familiaId/financeiro/lancamentos/:id', authMiddleware, lancamentoController.atualizar);
 router.patch('/:familiaId/financeiro/lancamentos/:id/status', authMiddleware, lancamentoController.alterarStatus);
 router.delete('/:familiaId/financeiro/lancamentos/:id', authMiddleware, lancamentoController.remover);
+
+// Recorrencias Financeiras
+router.post('/:familiaId/financeiro/recorrencias', authMiddleware, recorrenciaFinanceiraController.criar);
+router.get('/:familiaId/financeiro/recorrencias', authMiddleware, recorrenciaFinanceiraController.listar);
+router.get('/:familiaId/financeiro/recorrencias/:id/ocorrencias', authMiddleware, recorrenciaFinanceiraController.listarOcorrencias);
+router.post('/:familiaId/financeiro/recorrencias/:id/executar', authMiddleware, recorrenciaFinanceiraController.executarManual);
+router.get('/:familiaId/financeiro/recorrencias/:id', authMiddleware, recorrenciaFinanceiraController.obter);
+router.put('/:familiaId/financeiro/recorrencias/:id', authMiddleware, recorrenciaFinanceiraController.atualizar);
+router.patch('/:familiaId/financeiro/recorrencias/:id/status', authMiddleware, recorrenciaFinanceiraController.alterarStatus);
+router.delete('/:familiaId/financeiro/recorrencias/:id', authMiddleware, recorrenciaFinanceiraController.remover);
+
+// Metas Financeiras
+router.post('/:familiaId/financeiro/metas', authMiddleware, metaFinanceiraController.criar);
+router.get('/:familiaId/financeiro/metas', authMiddleware, metaFinanceiraController.listar);
+router.patch('/:familiaId/financeiro/metas/:id/cancelar', authMiddleware, metaFinanceiraController.cancelar);
+router.patch('/:familiaId/financeiro/metas/:id/concluir', authMiddleware, metaFinanceiraController.concluir);
+router.post('/:familiaId/financeiro/metas/:id/movimentacoes', authMiddleware, metaFinanceiraController.registrarMovimentacao);
+router.get('/:familiaId/financeiro/metas/:id/historicos', authMiddleware, metaFinanceiraController.listarMovimentacoes);
+router.get('/:familiaId/financeiro/metas/:id', authMiddleware, metaFinanceiraController.obter);
+router.put('/:familiaId/financeiro/metas/:id', authMiddleware, metaFinanceiraController.atualizar);
+router.delete('/:familiaId/financeiro/metas/:id', authMiddleware, metaFinanceiraController.remover);
+
+// Orcamentos Financeiros (resumo antes de /:id para nao colidir)
+router.post('/:familiaId/financeiro/orcamentos', authMiddleware, orcamentoController.criar);
+router.get('/:familiaId/financeiro/orcamentos', authMiddleware, orcamentoController.listar);
+router.get('/:familiaId/financeiro/orcamentos/resumo', authMiddleware, orcamentoController.resumo);
+router.get('/:familiaId/financeiro/orcamentos/:id', authMiddleware, orcamentoController.obter);
+router.put('/:familiaId/financeiro/orcamentos/:id', authMiddleware, orcamentoController.atualizar);
+router.delete('/:familiaId/financeiro/orcamentos/:id', authMiddleware, orcamentoController.remover);
 
 export default router;

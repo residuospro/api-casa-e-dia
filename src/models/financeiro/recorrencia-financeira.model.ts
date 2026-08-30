@@ -29,3 +29,12 @@ export interface AtualizarRecorrenciaFinanceiraDTO {
   proximaExecucao?: string;
   ativa?: boolean;
 }
+
+export interface AlterarStatusRecorrenciaDTO {
+  ativa: boolean;
+}
+
+export interface FiltrosRecorrencia {
+  ativa?: boolean;
+  frequencia?: FrequenciaRecorrenciaFinanceira[];
+}

@@ -140,3 +140,14 @@ export enum StatusMetaFinanceira {
   CONCLUIDA = 'CONCLUIDA',
   CANCELADA = 'CANCELADA',
 }
+
+export enum TipoMovimentacaoMeta {
+  ENTRADA = 'ENTRADA',
+  SAIDA = 'SAIDA',
+}
+
+export enum IndicadorOrcamento {
+  NORMAL = 'NORMAL',
+  PROXIMO = 'PROXIMO',
+  ULTRAPASSADO = 'ULTRAPASSADO',
+}

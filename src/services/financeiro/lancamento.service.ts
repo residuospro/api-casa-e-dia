@@ -22,70 +22,16 @@ import {
   GranularidadePeriodo,
 } from '../../models/financeiro/lancamento.model';
 import { StatusLancamento, TipoLancamento, FormaPagamento, OrigemLancamento, Moeda } from '../../models/enums';
+import {
+  EstadoFinanceiroLancamento,
+  arredondar2,
+  calcularDeltasImpacto,
+  contaParaConsumo,
+  usaCartaoCredito,
+} from './lancamento.regras';
+import { orcamentoService } from './orcamento.service';
 
-// ============ Regras de impacto no saldo ============
-//
-// Como o saldo das contas e afetado por cada tipo de lancamento:
-//
-// - RECEITA:      +valor na contaOrigem (convencao: a conta que recebe o dinheiro
-//                  fica em contaOrigemId; RECEITA nunca usa contaDestinoId)
-// - DESPESA:      -valor na contaOrigem
-// - TRANSFERENCIA: -valor na contaOrigem e +valor na contaDestino
-// - AJUSTE:       correcao de saldo na contaOrigem. O valor e assinado:
-//                  positivo soma ao saldo, negativo subtrai (unica excecao a regra
-//                  de valor > 0). Serve para corrigir diferencas de saldo.
-//
-// O status define QUAL saldo e afetado:
-// - PENDENTE:    afeta apenas saldoPrevisto
-// - PAGO:        afeta apenas saldoAtual (deixa de compor o previsto)
-// - CANCELADO:   nao afeta nenhum saldo (permanece para historico)
-// - IGNORADO:    nao afeta nenhum saldo (permanece para historico)
-//
-// Excecao: DESPESA paga com cartao de credito (cartaoId + formaPagamento CREDITO)
-// nao altera o saldo da conta vinculada. O impacto na fatura do cartao sera
-// tratado em modulo futuro.
-
-export interface EstadoFinanceiroLancamento {
-  tipo: TipoLancamento;
-  valor: number;
-  status: StatusLancamento;
-  contaOrigemId: string;
-  contaDestinoId?: string | null;
-  afetaConta: boolean;
-}
-
-export function usaCartaoCredito(l: { tipo: TipoLancamento; cartaoId?: string | null; formaPagamento?: FormaPagamento | null }): boolean {
-  return l.tipo === TipoLancamento.DESPESA && !!l.cartaoId && l.formaPagamento === FormaPagamento.CREDITO;
-}
-
-export function calcularDeltasImpacto(estado: EstadoFinanceiroLancamento): DeltaSaldo[] {
-  if (
-    !estado.afetaConta ||
-    estado.status === StatusLancamento.CANCELADO ||
-    estado.status === StatusLancamento.IGNORADO
-  ) {
-    return [];
-  }
-
-  const campo: DeltaSaldo['campo'] =
-    estado.status === StatusLancamento.PAGO ? 'saldoAtual' : 'saldoPrevisto';
-
-  switch (estado.tipo) {
-    case TipoLancamento.RECEITA:
-      return [{ contaId: estado.contaOrigemId, campo, delta: arredondar2(estado.valor) }];
-    case TipoLancamento.DESPESA:
-      return [{ contaId: estado.contaOrigemId, campo, delta: arredondar2(-estado.valor) }];
-    case TipoLancamento.AJUSTE:
-      return [{ contaId: estado.contaOrigemId, campo, delta: arredondar2(estado.valor) }];
-    case TipoLancamento.TRANSFERENCIA:
-      return [
-        { contaId: estado.contaOrigemId, campo, delta: arredondar2(-estado.valor) },
-        { contaId: estado.contaDestinoId as string, campo, delta: arredondar2(estado.valor) },
-      ];
-    default:
-      return [];
-  }
-}
+export { EstadoFinanceiroLancamento, usaCartaoCredito, calcularDeltasImpacto };
 
 interface LancamentoMesclado {
   tipo: TipoLancamento;
@@ -133,10 +79,6 @@ const CAMPOS_HISTORICO: string[] = [
   'localizacao',
 ];
 
-function arredondar2(n: number): number {
-  return Math.round(n * 100) / 100;
-}
-
 function serializarValorHistorico(valor: unknown): string | null {
   if (valor === undefined) return null;
   if (valor === null) return null;
@@ -156,12 +98,15 @@ export class LancamentoService {
     const afetaConta = !usaCartaoCredito(dto);
 
     return prisma.$transaction(async (tx) => {
+      const cobertura = await this.obterCobertura(tx, familiaId, dto.tipo, dto.categoriaId ?? null, dataHora);
+
       const lancamento = await lancamentoRepository.createIn(tx, familiaId, criadoPorMembroId, {
         ...dto,
         tagsIds: dto.tagsIds ? [...new Set(dto.tagsIds)] : undefined,
         dataHora,
         status: StatusLancamento.PENDENTE,
         origem: OrigemLancamento.MANUAL,
+        orcamentoId: cobertura.orcamentoId,
       });
 
       const deltas = calcularDeltasImpacto({
@@ -171,8 +116,13 @@ export class LancamentoService {
         contaOrigemId: dto.contaOrigemId,
         contaDestinoId: dto.contaDestinoId ?? null,
         afetaConta,
+        coberto: cobertura.coberto,
       });
       await lancamentoRepository.aplicarImpactoSaldoIn(tx, deltas);
+
+      if (cobertura.coberto) {
+        await orcamentoService.recalcularConsumoIn(tx, cobertura.orcamentoId as string);
+      }
 
       await lancamentoRepository.createHistoricosIn(tx, [
         { lancamentoId: lancamento.id, usuarioId, campo: 'CRIACAO', novoValor: dto.titulo },
@@ -180,6 +130,88 @@ export class LancamentoService {
 
       return lancamento;
     });
+  }
+
+  /**
+   * Cria um lancamento a partir de um modelo de recorrencia financeira.
+   *
+   * Reusa a logica de impacto no saldo (calcularDeltasImpacto + aplicarImpactoSaldoIn)
+   * para nao duplicar regras de saldo. Deve ser chamado dentro de uma transacao Prisma
+   * para garantir atomicidade junto com a atualizacao da recorrencia.
+   *
+   * A ocorrencia recebe origem = RECORRENCIA, vincula a recorrencia (recorrenciaId) e
+   * comeca como PENDENTE (lancamento futuro -> saldoPrevisto).
+   */
+  async criarDeRecorrencia(
+    tx: Prisma.TransactionClient,
+    familiaId: string,
+    origem: {
+      criadoPorId: string;
+      responsavelId: string;
+      tipo: TipoLancamento;
+      titulo: string;
+      descricao: string | null;
+      valor: Prisma.Decimal | number;
+      moeda: Moeda;
+      categoriaId: string | null;
+      subcategoriaId: string | null;
+      centroCustoId: string | null;
+      contaOrigemId: string;
+      contaDestinoId: string | null;
+      cartaoId: string | null;
+      formaPagamento: FormaPagamento | null;
+      observacoes: string | null;
+      localizacao: string | null;
+    },
+    dataHora: Date,
+    recorrenciaId: string,
+  ) {
+    const dados = {
+      tipo: origem.tipo,
+      titulo: origem.titulo,
+      descricao: origem.descricao,
+      valor: Number(origem.valor),
+      moeda: origem.moeda,
+      categoriaId: origem.categoriaId,
+      subcategoriaId: origem.subcategoriaId,
+      centroCustoId: origem.centroCustoId,
+      contaOrigemId: origem.contaOrigemId,
+      contaDestinoId: origem.contaDestinoId,
+      cartaoId: origem.cartaoId,
+      formaPagamento: origem.formaPagamento,
+      observacoes: origem.observacoes,
+      responsavelId: origem.responsavelId,
+      localizacao: origem.localizacao,
+    };
+
+    const cobertura = await this.obterCobertura(tx, familiaId, dados.tipo, dados.categoriaId, dataHora);
+
+    const lancamento = await lancamentoRepository.createIn(tx, familiaId, origem.criadoPorId, {
+      ...dados,
+      dataHora,
+      status: StatusLancamento.PENDENTE,
+      origem: OrigemLancamento.RECORRENCIA,
+      recorrenciaId,
+      orcamentoId: cobertura.orcamentoId,
+    });
+
+    const afetaConta = !usaCartaoCredito(dados);
+    const deltas = calcularDeltasImpacto({
+      tipo: dados.tipo,
+      valor: dados.valor,
+      status: StatusLancamento.PENDENTE,
+      contaOrigemId: dados.contaOrigemId,
+      contaDestinoId: dados.contaDestinoId,
+      afetaConta,
+      coberto: cobertura.coberto,
+    });
+    await lancamentoRepository.aplicarImpactoSaldoIn(tx, deltas);
+
+    if (cobertura.coberto) {
+      await orcamentoService.recalcularConsumoIn(tx, cobertura.orcamentoId as string);
+    }
+
+    return lancamento;
   }
 
   // ==================== CONSULTAS ====================
@@ -233,31 +265,41 @@ export class LancamentoService {
         cartaoId: existente.cartaoId,
         formaPagamento: existente.formaPagamento as FormaPagamento | null,
       }),
-    };
-
-    const estadoNovo: EstadoFinanceiroLancamento = {
-      tipo: merged.tipo,
-      valor: merged.valor,
-      status: merged.status,
-      contaOrigemId: merged.contaOrigemId,
-      contaDestinoId: merged.contaDestinoId,
-      afetaConta: !usaCartaoCredito(merged),
+      coberto: !!existente.orcamentoId,
     };
 
     const historicos = this.montarHistoricosDiff(id, usuarioId, existente, dto, dataHoraNovo);
 
     await prisma.$transaction(async (tx) => {
+      const coberturaNovo = await this.obterCobertura(tx, familiaId, merged.tipo, merged.categoriaId ?? null, dataHoraNovo);
+
+      const estadoNovo: EstadoFinanceiroLancamento = {
+        tipo: merged.tipo,
+        valor: merged.valor,
+        status: merged.status,
+        contaOrigemId: merged.contaOrigemId,
+        contaDestinoId: merged.contaDestinoId,
+        afetaConta: !usaCartaoCredito(merged),
+        coberto: coberturaNovo.coberto,
+      };
+
       const reversao = calcularDeltasImpacto(estadoAnterior).map((d) => ({ ...d, delta: arredondar2(-d.delta) }));
       const aplicacao = calcularDeltasImpacto(estadoNovo);
       await lancamentoRepository.aplicarImpactoSaldoIn(tx, [...reversao, ...aplicacao]);
 
-      await lancamentoRepository.updateIn(tx, id, this.montarDataUpdate(dto, dataHoraNovo));
+      await lancamentoRepository.updateIn(
+        tx,
+        id,
+        { ...this.montarDataUpdate(dto, dataHoraNovo), orcamentoId: coberturaNovo.orcamentoId },
+      );
 
       if (dto.tagsIds !== undefined) {
         await lancamentoRepository.substituirTagsIn(tx, id, [...new Set(dto.tagsIds)]);
       }
 
       await lancamentoRepository.createHistoricosIn(tx, historicos);
+
+      await this.recalcularOrcamentosAfetados(tx, existente.orcamentoId, coberturaNovo.orcamentoId);
     });
 
     return lancamentoRepository.findDetailed(id);
@@ -294,14 +336,37 @@ export class LancamentoService {
     };
 
     await prisma.$transaction(async (tx) => {
-      const reversao = calcularDeltasImpacto({ ...estadoComum, status: statusAtual }).map((d) => ({
+      const cobertoAntes = !!existente.orcamentoId;
+      const consumoNovo = contaParaConsumo(dto.status);
+
+      let orcamentoIdFinal: string | null = existente.orcamentoId;
+      let aplicacao: DeltaSaldo[] = [];
+
+      if (consumoNovo && !cobertoAntes) {
+        const cobertura = await this.obterCobertura(
+          tx,
+          familiaId,
+          existente.tipo as TipoLancamento,
+          existente.categoriaId,
+          existente.dataHora,
+        );
+        orcamentoIdFinal = cobertura.orcamentoId;
+        aplicacao = calcularDeltasImpacto({ ...estadoComum, status: dto.status, coberto: cobertura.coberto });
+      } else if (!consumoNovo) {
+        orcamentoIdFinal = null;
+      }
+
+      const reversao = calcularDeltasImpacto({ ...estadoComum, status: statusAtual, coberto: cobertoAntes }).map((d) => ({
         ...d,
         delta: arredondar2(-d.delta),
       }));
-      const aplicacao = calcularDeltasImpacto({ ...estadoComum, status: dto.status });
       await lancamentoRepository.aplicarImpactoSaldoIn(tx, [...reversao, ...aplicacao]);
 
-      await lancamentoRepository.updateIn(tx, id, { status: dto.status });
+      const updateData: Prisma.LancamentoUncheckedUpdateInput = { status: dto.status };
+      if (orcamentoIdFinal !== existente.orcamentoId) {
+        updateData.orcamentoId = orcamentoIdFinal;
+      }
+      await lancamentoRepository.updateIn(tx, id, updateData);
 
       await lancamentoRepository.createHistoricosIn(tx, [
         {
@@ -312,6 +377,8 @@ export class LancamentoService {
           novoValor: dto.status,
         },
       ]);
+
+      await this.recalcularOrcamentosAfetados(tx, existente.orcamentoId, orcamentoIdFinal);
     });
 
     return lancamentoRepository.findDetailed(id);
@@ -326,23 +393,33 @@ export class LancamentoService {
     }
 
     await prisma.$transaction(async (tx) => {
-      const deltasReverter = calcularDeltasImpacto({
-        tipo: existente.tipo as TipoLancamento,
-        valor: Number(existente.valor),
-        status: existente.status as StatusLancamento,
-        contaOrigemId: existente.contaOrigemId,
-        contaDestinoId: existente.contaDestinoId,
-        afetaConta: !usaCartaoCredito({
-          tipo: existente.tipo as TipoLancamento,
-          cartaoId: existente.cartaoId,
-          formaPagamento: existente.formaPagamento as FormaPagamento | null,
-        }),
-      }).map((d) => ({ ...d, delta: arredondar2(-d.delta) }));
+      const coberto = !!existente.orcamentoId;
+
+      const deltasReverter = coberto
+        ? []
+        : calcularDeltasImpacto({
+            tipo: existente.tipo as TipoLancamento,
+            valor: Number(existente.valor),
+            status: existente.status as StatusLancamento,
+            contaOrigemId: existente.contaOrigemId,
+            contaDestinoId: existente.contaDestinoId,
+            afetaConta: !usaCartaoCredito({
+              tipo: existente.tipo as TipoLancamento,
+              cartaoId: existente.cartaoId,
+              formaPagamento: existente.formaPagamento as FormaPagamento | null,
+            }),
+            coberto,
+          }).map((d) => ({ ...d, delta: arredondar2(-d.delta) }));
 
       await lancamentoRepository.createHistoricosIn(tx, [
         { lancamentoId: id, usuarioId, campo: 'EXCLUSAO', valorAnterior: existente.titulo },
       ]);
       await lancamentoRepository.aplicarImpactoSaldoIn(tx, deltasReverter);
+
+      if (coberto) {
+        await orcamentoService.recalcularConsumoIn(tx, existente.orcamentoId as string);
+      }
+
       await lancamentoRepository.deleteIn(tx, id);
     });
   }
@@ -710,6 +787,32 @@ export class LancamentoService {
     }
 
     return registros;
+  }
+
+  /** Resolve a cobertura por orcamento dentro da transacao (retorna null quando nao ha orcamento). */
+  private async obterCobertura(
+    tx: Prisma.TransactionClient,
+    familiaId: string,
+    tipo: TipoLancamento,
+    categoriaId: string | null,
+    dataHora: Date,
+  ) {
+    const orcamentoId = await orcamentoService.coberturaParaIn(tx, familiaId, { tipo, categoriaId, dataHora });
+    return { coberto: orcamentoId !== null, orcamentoId };
+  }
+
+  /** Recalcula o valor consumido dos orcamentos envolvidos (evitando duplicados). */
+  private async recalcularOrcamentosAfetados(
+    tx: Prisma.TransactionClient,
+    orcamentoIdAnterior: string | null,
+    orcamentoIdNovo: string | null,
+  ) {
+    const ids = new Set<string>();
+    if (orcamentoIdAnterior) ids.add(orcamentoIdAnterior);
+    if (orcamentoIdNovo) ids.add(orcamentoIdNovo);
+    for (const id of ids) {
+      await orcamentoService.recalcularConsumoIn(tx, id);
+    }
   }
 }
 

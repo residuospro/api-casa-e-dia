@@ -62,6 +62,13 @@ jest.mock('../../repositories/family.repository', () => ({
   familyRepository: { findMembroById: jest.fn(), findMembroByUsuarioAndFamilia: jest.fn() },
 }));
 
+jest.mock('./orcamento.service', () => ({
+  orcamentoService: {
+    coberturaParaIn: jest.fn(async () => null),
+    recalcularConsumoIn: jest.fn(async () => {}),
+  },
+}));
+
 const { default: prisma } = jest.requireMock('../../config/database');
 const { lancamentoRepository } = jest.requireMock('../../repositories/financeiro/lancamento.repository');
 const { contaRepository } = jest.requireMock('../../repositories/financeiro/conta.repository');
@@ -70,6 +77,7 @@ const { subcategoriaRepository } = jest.requireMock('../../repositories/financei
 const { cartaoRepository } = jest.requireMock('../../repositories/financeiro/cartao.repository');
 const { tagRepository } = jest.requireMock('../../repositories/financeiro/tag.repository');
 const { familyRepository } = jest.requireMock('../../repositories/family.repository');
+const orcamentoServiceMock = jest.requireMock('./orcamento.service').orcamentoService;
 
 const txToken = { __tx: true };
 
@@ -123,6 +131,8 @@ function mockReferenciasValidas() {
 beforeEach(() => {
   jest.clearAllMocks();
   (prisma.$transaction as jest.Mock).mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => fn(txToken));
+  orcamentoServiceMock.coberturaParaIn.mockResolvedValue(null);
+  orcamentoServiceMock.recalcularConsumoIn.mockResolvedValue(undefined);
 });
 
 describe('calcularDeltasImpacto', () => {
@@ -340,6 +350,42 @@ describe('LancamentoService.criar', () => {
       lancamentoService.criar('fam-1', 'm', 'u', makeDtoBase({ tagsIds: ['tag-1'] })),
     ).rejects.toMatchObject({ statusCode: 404 });
   });
+
+  it('despesa coberta por orcamento nao toca no saldo e vincula o lancamento', async () => {
+    mockReferenciasValidas();
+    lancamentoRepository.createIn.mockResolvedValue(makeLancamento({ orcamentoId: 'orc-1' }));
+    orcamentoServiceMock.coberturaParaIn.mockResolvedValueOnce('orc-1');
+
+    await lancamentoService.criar('fam-1', 'm', 'u', makeDtoBase());
+
+    expect(lancamentoRepository.createIn).toHaveBeenCalledWith(
+      txToken,
+      'fam-1',
+      'm',
+      expect.objectContaining({ orcamentoId: 'orc-1' }),
+    );
+    expect(lancamentoRepository.aplicarImpactoSaldoIn).toHaveBeenCalledWith(txToken, []);
+    expect(orcamentoServiceMock.recalcularConsumoIn).toHaveBeenCalledWith(txToken, 'orc-1');
+  });
+
+  it('despesa sem orcamento no mes deduz o saldo normalmente', async () => {
+    mockReferenciasValidas();
+    lancamentoRepository.createIn.mockResolvedValue(makeLancamento());
+    orcamentoServiceMock.coberturaParaIn.mockResolvedValueOnce(null);
+
+    await lancamentoService.criar('fam-1', 'm', 'u', makeDtoBase());
+
+    expect(lancamentoRepository.createIn).toHaveBeenCalledWith(
+      txToken,
+      'fam-1',
+      'm',
+      expect.objectContaining({ orcamentoId: null }),
+    );
+    expect(lancamentoRepository.aplicarImpactoSaldoIn).toHaveBeenCalledWith(txToken, [
+      { contaId: 'conta-1', campo: 'saldoPrevisto', delta: -100 },
+    ]);
+    expect(orcamentoServiceMock.recalcularConsumoIn).not.toHaveBeenCalled();
+  });
 });
 
 describe('LancamentoService.alterarStatus', () => {
@@ -353,9 +399,11 @@ describe('LancamentoService.alterarStatus', () => {
       { contaId: 'conta-1', campo: 'saldoPrevisto', delta: 100 },
       { contaId: 'conta-1', campo: 'saldoAtual', delta: -100 },
     ]);
-    expect(lancamentoRepository.updateIn).toHaveBeenCalledWith(txToken, 'lanc-1', {
-      status: StatusLancamento.PAGO,
-    });
+    expect(lancamentoRepository.updateIn).toHaveBeenCalledWith(
+      txToken,
+      'lanc-1',
+      expect.objectContaining({ status: StatusLancamento.PAGO }),
+    );
     expect(lancamentoRepository.createHistoricosIn).toHaveBeenCalledWith(
       txToken,
       [expect.objectContaining({ campo: 'STATUS', valorAnterior: 'PENDENTE', novoValor: 'PAGO' })],
@@ -397,9 +445,11 @@ describe('LancamentoService.alterarStatus', () => {
 
     await lancamentoService.alterarStatus('fam-1', 'u', 'lanc-1', { status: StatusLancamento.PENDENTE });
 
-    expect(lancamentoRepository.updateIn).toHaveBeenCalledWith(txToken, 'lanc-1', {
-      status: StatusLancamento.PENDENTE,
-    });
+    expect(lancamentoRepository.updateIn).toHaveBeenCalledWith(
+      txToken,
+      'lanc-1',
+      expect.objectContaining({ status: StatusLancamento.PENDENTE }),
+    );
   });
 
   it('lançamento de outra familia gera 404', async () => {
@@ -407,6 +457,41 @@ describe('LancamentoService.alterarStatus', () => {
     await expect(
       lancamentoService.alterarStatus('fam-1', 'u', 'lanc-1', { status: StatusLancamento.PAGO }),
     ).rejects.toMatchObject({ statusCode: 404 });
+  });
+
+  it('PAGO coberto -> CANCELADO nao altera saldo e desvincula do orcamento', async () => {
+    lancamentoRepository.findById.mockResolvedValue(
+      makeLancamento({ status: StatusLancamento.PAGO, orcamentoId: 'orc-1' }),
+    );
+    lancamentoRepository.findDetailed.mockResolvedValue(
+      makeLancamento({ status: StatusLancamento.CANCELADO, orcamentoId: null }),
+    );
+
+    await lancamentoService.alterarStatus('fam-1', 'u', 'lanc-1', { status: StatusLancamento.CANCELADO });
+
+    expect(lancamentoRepository.aplicarImpactoSaldoIn).toHaveBeenCalledWith(txToken, []);
+    expect(lancamentoRepository.updateIn).toHaveBeenCalledWith(txToken, 'lanc-1', {
+      status: StatusLancamento.CANCELADO,
+      orcamentoId: null,
+    });
+    expect(orcamentoServiceMock.recalcularConsumoIn).toHaveBeenCalledWith(txToken, 'orc-1');
+  });
+
+  it('IGNORADO coberto -> PENDENTE mantem a cobertura e nao altera saldo', async () => {
+    lancamentoRepository.findById.mockResolvedValue(
+      makeLancamento({ status: StatusLancamento.IGNORADO, orcamentoId: 'orc-1' }),
+    );
+    lancamentoRepository.findDetailed.mockResolvedValue(
+      makeLancamento({ status: StatusLancamento.PENDENTE, orcamentoId: 'orc-1' }),
+    );
+
+    await lancamentoService.alterarStatus('fam-1', 'u', 'lanc-1', { status: StatusLancamento.PENDENTE });
+
+    expect(lancamentoRepository.aplicarImpactoSaldoIn).toHaveBeenCalledWith(txToken, []);
+    expect(lancamentoRepository.updateIn).toHaveBeenCalledWith(txToken, 'lanc-1', {
+      status: StatusLancamento.PENDENTE,
+    });
+    expect(orcamentoServiceMock.recalcularConsumoIn).toHaveBeenCalledWith(txToken, 'orc-1');
   });
 });
 
@@ -440,6 +525,25 @@ describe('LancamentoService.atualizar', () => {
     await expect(lancamentoService.atualizar('fam-1', 'u', 'lanc-1', { titulo: 'X' })).rejects.toMatchObject({
       statusCode: 404,
     });
+  });
+
+  it('despesa que ganha cobertura reverte impacto anterior e vincula o orcamento', async () => {
+    lancamentoRepository.findById.mockResolvedValue(makeLancamento({ status: StatusLancamento.PENDENTE }));
+    lancamentoRepository.findDetailed.mockResolvedValue(makeLancamento({ status: StatusLancamento.PENDENTE }));
+    mockReferenciasValidas();
+    orcamentoServiceMock.coberturaParaIn.mockResolvedValueOnce('orc-1');
+
+    await lancamentoService.atualizar('fam-1', 'u', 'lanc-1', { titulo: 'Mercado novo' });
+
+    expect(lancamentoRepository.aplicarImpactoSaldoIn).toHaveBeenCalledWith(txToken, [
+      { contaId: 'conta-1', campo: 'saldoPrevisto', delta: 100 },
+    ]);
+    expect(lancamentoRepository.updateIn).toHaveBeenCalledWith(
+      txToken,
+      'lanc-1',
+      expect.objectContaining({ orcamentoId: 'orc-1' }),
+    );
+    expect(orcamentoServiceMock.recalcularConsumoIn).toHaveBeenCalledWith(txToken, 'orc-1');
   });
 });
 
@@ -489,6 +593,16 @@ describe('LancamentoService.remover', () => {
     await expect(lancamentoService.remover('fam-1', 'u', 'lanc-1')).rejects.toMatchObject({
       statusCode: 404,
     });
+  });
+
+  it('excluir despesa coberta nao altera saldo, recalcula consumo e deleta', async () => {
+    lancamentoRepository.findById.mockResolvedValue(makeLancamento({ orcamentoId: 'orc-1' }));
+
+    await lancamentoService.remover('fam-1', 'u', 'lanc-1');
+
+    expect(lancamentoRepository.aplicarImpactoSaldoIn).toHaveBeenCalledWith(txToken, []);
+    expect(orcamentoServiceMock.recalcularConsumoIn).toHaveBeenCalledWith(txToken, 'orc-1');
+    expect(lancamentoRepository.deleteIn).toHaveBeenCalledWith(txToken, 'lanc-1');
   });
 });
 

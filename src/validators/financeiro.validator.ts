@@ -9,6 +9,11 @@ import {
   StatusLancamento,
   OrigemLancamento,
   FormaPagamento,
+  FrequenciaRecorrenciaFinanceira,
+  TipoMetaFinanceira,
+  StatusMetaFinanceira,
+  TipoMovimentacaoMeta,
+  IndicadorOrcamento,
 } from '../models/enums';
 
 export const criarContaSchema = z.object({
@@ -204,3 +209,98 @@ export const agrupamentoPeriodoQuerySchema = periodoQuerySchema.and(
     granularidade: z.enum(['DIA', 'SEMANA', 'MES']).default('DIA'),
   }),
 );
+
+// ========== RECORRENCIAS FINANCEIRAS ==========
+
+export const criarRecorrenciaSchema = z.object({
+  lancamentoModeloId: z.string().min(1, 'Lancamento modelo e obrigatorio'),
+  titulo: z.string().min(1, 'Titulo e obrigatorio').max(150, 'Titulo muito longo'),
+  frequencia: z.nativeEnum(FrequenciaRecorrenciaFinanceira),
+  intervalo: z.number().int().min(1, 'Intervalo deve ser maior que zero').max(999).optional(),
+  proximaExecucao: dataValida,
+});
+
+export const atualizarRecorrenciaSchema = z.object({
+  titulo: z.string().min(1, 'Titulo e obrigatorio').max(150, 'Titulo muito longo').optional(),
+  frequencia: z.nativeEnum(FrequenciaRecorrenciaFinanceira).optional(),
+  intervalo: z.number().int().min(1, 'Intervalo deve ser maior que zero').max(999).optional(),
+  proximaExecucao: dataValida.optional(),
+  ativa: z.boolean().optional(),
+});
+
+export const alterarStatusRecorrenciaSchema = z.object({
+  ativa: z.boolean(),
+});
+
+export const filtrosRecorrenciaQuerySchema = z.object({
+  ativa: z
+    .preprocess((v) => {
+      if (v === undefined || v === null || v === '') return undefined;
+      return String(v) === 'true';
+    }, z.boolean().optional()),
+  frequencia: listaCsv(z.nativeEnum(FrequenciaRecorrenciaFinanceira)),
+});
+
+export const filtrosOcorrenciaQuerySchema = z.object({});
+
+// ========== METAS FINANCEIRAS ==========
+
+export const criarMetaFinanceiraSchema = z.object({
+  titulo: z.string().min(1, 'Titulo e obrigatorio').max(150, 'Titulo muito longo'),
+  descricao: z.string().max(500, 'Descricao muito longa').nullable().optional(),
+  tipo: z.nativeEnum(TipoMetaFinanceira).optional(),
+  valorObjetivo: z.number().gt(0, 'Valor objetivo deve ser maior que zero'),
+  dataLimite: dataValida.optional(),
+  contaDestinoId: idOpcional,
+  imagem: z.string().max(500, 'Imagem muito longa').nullable().optional(),
+});
+
+export const atualizarMetaFinanceiraSchema = z.object({
+  titulo: z.string().min(1, 'Titulo e obrigatorio').max(150, 'Titulo muito longo').optional(),
+  descricao: z.string().max(500, 'Descricao muito longa').nullable().optional(),
+  tipo: z.nativeEnum(TipoMetaFinanceira).optional(),
+  valorObjetivo: z.number().gt(0, 'Valor objetivo deve ser maior que zero').optional(),
+  dataLimite: dataValida.optional(),
+  contaDestinoId: idOpcional,
+  imagem: z.string().max(500, 'Imagem muito longa').nullable().optional(),
+});
+
+export const movimentacaoMetaFinanceiraSchema = z.object({
+  valor: z.number().gt(0, 'Valor deve ser maior que zero'),
+  tipo: z.nativeEnum(TipoMovimentacaoMeta),
+  observacao: z.string().max(500, 'Observacao muito longa').nullable().optional(),
+});
+
+export const filtrosMetaFinanceiraQuerySchema = z.object({
+  status: listaCsv(z.nativeEnum(StatusMetaFinanceira)),
+  tipo: listaCsv(z.nativeEnum(TipoMetaFinanceira)),
+  busca: z.string().optional(),
+});
+
+// ========== ORCAMENTOS FINANCEIROS ==========
+
+export const criarOrcamentoSchema = z.object({
+  categoriaId: z.string().min(1, 'Categoria e obrigatoria'),
+  contaId: z.string().min(1, 'Conta e obrigatoria'),
+  mes: z.number().int().min(1, 'Mes invalido').max(12, 'Mes invalido'),
+  ano: z.number().int().min(2000, 'Ano invalido').max(2200, 'Ano invalido'),
+  valorLimite: z.number().gt(0, 'Valor limite deve ser maior que zero'),
+});
+
+export const atualizarOrcamentoSchema = z.object({
+  valorLimite: z.number().gt(0, 'Valor limite deve ser maior que zero').optional(),
+  contaId: z.string().min(1, 'Conta e obrigatoria').optional(),
+});
+
+export const filtrosOrcamentoQuerySchema = z.object({
+  mes: z.coerce.number().int().min(1, 'Mes invalido').max(12, 'Mes invalido').optional(),
+  ano: z.coerce.number().int().min(2000, 'Ano invalido').max(2200, 'Ano invalido').optional(),
+  categoriaId: z.string().optional(),
+  status: listaCsv(z.nativeEnum(IndicadorOrcamento)),
+  busca: z.string().optional(),
+});
+
+export const mesAnoOrcamentoQuerySchema = z.object({
+  mes: z.coerce.number().int().min(1, 'Mes invalido').max(12, 'Mes invalido'),
+  ano: z.coerce.number().int().min(2000, 'Ano invalido').max(2200, 'Ano invalido'),
+});

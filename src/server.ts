@@ -12,6 +12,7 @@ import { initSocket } from './socket';
 import { initScheduler } from './scheduler';
 import { initCycleScheduler } from './scheduler/cycle';
 import { initRecorrenciaScheduler } from './scheduler/recorrencia';
+import { initFinanceRecorrenciaScheduler } from './scheduler/finance-recorencia';
 import { initializeApp, cert } from 'firebase-admin/app';
 import type { ServiceAccount } from 'firebase-admin';
 
@@ -37,6 +38,7 @@ initSocket(httpServer);
 initScheduler();
 initCycleScheduler();
 initRecorrenciaScheduler();
+initFinanceRecorrenciaScheduler();
 
 httpServer.listen(env.port, () => {
   console.log(`Servidor rodando na porta ${env.port}`);

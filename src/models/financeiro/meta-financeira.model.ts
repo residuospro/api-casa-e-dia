@@ -1,4 +1,4 @@
-import { TipoMetaFinanceira, StatusMetaFinanceira } from '../enums';
+import { TipoMetaFinanceira, StatusMetaFinanceira, TipoMovimentacaoMeta } from '../enums';
 
 export interface MetaFinanceira {
   id: string;
@@ -18,22 +18,44 @@ export interface MetaFinanceira {
 
 export interface CriarMetaFinanceiraDTO {
   titulo: string;
-  descricao?: string;
+  descricao?: string | null;
   tipo?: TipoMetaFinanceira;
   valorObjetivo: number;
   dataLimite?: string;
-  contaDestinoId?: string;
-  imagem?: string;
+  contaDestinoId?: string | null;
+  imagem?: string | null;
 }
 
 export interface AtualizarMetaFinanceiraDTO {
   titulo?: string;
-  descricao?: string;
+  descricao?: string | null;
   tipo?: TipoMetaFinanceira;
   valorObjetivo?: number;
-  valorAtual?: number;
   dataLimite?: string;
-  contaDestinoId?: string;
-  status?: StatusMetaFinanceira;
-  imagem?: string;
+  contaDestinoId?: string | null;
+  imagem?: string | null;
+}
+
+export interface MovimentacaoMetaFinanceiraDTO {
+  valor: number;
+  tipo: TipoMovimentacaoMeta;
+  observacao?: string | null;
+}
+
+export interface HistoricoMetaFinanceira {
+  id: string;
+  metaFinanceiraId: string;
+  usuarioId: string;
+  tipo: TipoMovimentacaoMeta;
+  valor: number;
+  saldoAnterior: number;
+  saldoNovo: number;
+  observacao: string | null;
+  criadoEm: Date;
+}
+
+export interface FiltrosMetaFinanceira {
+  status?: StatusMetaFinanceira[];
+  tipo?: TipoMetaFinanceira[];
+  busca?: string;
 }
