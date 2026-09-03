@@ -74,6 +74,27 @@ export const metaFinanceiraRepository = {
     return { data, total };
   },
 
+  findByFamiliaStatusIn(
+    familiaId: string,
+    statuses: StatusMetaFinanceira[],
+    take?: number,
+  ) {
+    return prisma.metaFinanceira.findMany({
+      where: { familiaId, status: { in: statuses } },
+      orderBy: { atualizadoEm: 'desc' },
+      include: metaInclude,
+      take,
+    });
+  },
+
+  countByStatus(familiaId: string) {
+    return prisma.metaFinanceira.groupBy({
+      by: ['status'],
+      where: { familiaId },
+      _count: { _all: true },
+    });
+  },
+
   update(id: string, data: AtualizarMetaFinanceiraDTO) {
     const updateData: Prisma.MetaFinanceiraUncheckedUpdateInput = {};
     if (data.titulo !== undefined) updateData.titulo = data.titulo;

@@ -98,6 +98,7 @@ enum TipoLancamento {
 enum StatusLancamento {
   PENDENTE
   PAGO
+  RECEBIDO
   CANCELADO
   IGNORADO
 }

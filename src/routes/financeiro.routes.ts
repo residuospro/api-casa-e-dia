@@ -9,6 +9,7 @@ import { lancamentoController } from '../controllers/financeiro/lancamento.contr
 import { recorrenciaFinanceiraController } from '../controllers/financeiro/recorrencia-financeira.controller';
 import { metaFinanceiraController } from '../controllers/financeiro/meta-financeira.controller';
 import { orcamentoController } from '../controllers/financeiro/orcamento.controller';
+import { dashboardController } from '../controllers/financeiro/dashboard.controller';
 import { financeiroOpcoesController } from '../controllers/financeiro/financeiro-opcoes.controller';
 import { authMiddleware } from '../middlewares/auth.middleware';
 
@@ -101,5 +102,14 @@ router.get('/:familiaId/financeiro/orcamentos/resumo', authMiddleware, orcamento
 router.get('/:familiaId/financeiro/orcamentos/:id', authMiddleware, orcamentoController.obter);
 router.put('/:familiaId/financeiro/orcamentos/:id', authMiddleware, orcamentoController.atualizar);
 router.delete('/:familiaId/financeiro/orcamentos/:id', authMiddleware, orcamentoController.remover);
+
+// Graficos / Dashboard
+router.get('/:familiaId/financeiro/graficos/fluxo-caixa', authMiddleware, dashboardController.fluxoCaixa);
+router.get('/:familiaId/financeiro/graficos/evolucao-patrimonio', authMiddleware, dashboardController.evolucaoPatrimonio);
+router.get('/:familiaId/financeiro/graficos/despesas-por-categoria', authMiddleware, dashboardController.despesasPorCategoria);
+router.get('/:familiaId/financeiro/graficos/metas-progresso', authMiddleware, dashboardController.metasProgresso);
+router.get('/:familiaId/financeiro/graficos/orcamentos-resumo', authMiddleware, dashboardController.orcamentosResumo);
+router.get('/:familiaId/financeiro/graficos/saldo-contas', authMiddleware, dashboardController.saldoContas);
+router.get('/:familiaId/financeiro/graficos/gastos-por-responsavel', authMiddleware, dashboardController.gastosPorResponsavel);
 
 export default router;

@@ -149,6 +149,7 @@ export const criarLancamentoSchema = z.object({
   responsavelId: z.string().min(1, 'Responsavel e obrigatorio'),
   localizacao: z.string().max(255, 'Localizacao muito longa').nullable().optional(),
   tagsIds: z.array(z.string().min(1)).max(20, 'Maximo de 20 tags').optional(),
+  status: z.nativeEnum(StatusLancamento).optional(),
 });
 
 export const atualizarLancamentoSchema = z.object({
@@ -169,6 +170,7 @@ export const atualizarLancamentoSchema = z.object({
   responsavelId: z.string().min(1).optional(),
   localizacao: z.string().max(255, 'Localizacao muito longa').nullable().optional(),
   tagsIds: z.array(z.string().min(1)).max(20, 'Maximo de 20 tags').optional(),
+  status: z.nativeEnum(StatusLancamento).optional(),
 });
 
 export const alterarStatusLancamentoSchema = z.object({
@@ -304,3 +306,23 @@ export const mesAnoOrcamentoQuerySchema = z.object({
   mes: z.coerce.number().int().min(1, 'Mes invalido').max(12, 'Mes invalido'),
   ano: z.coerce.number().int().min(2000, 'Ano invalido').max(2200, 'Ano invalido'),
 });
+
+// ========== DASHBOARD / GRAFICOS ==========
+
+export const evolucaoPatrimonioQuerySchema = z.object({
+  meses: z.coerce.number().int().min(1, 'Meses invalido').max(36, 'Meses invalido').default(12),
+});
+
+/** Mes/ano do dashboard, com padrao para o mes corrente. */
+export const mesAnoDashboardQuerySchema = z
+  .object({
+    mes: z.coerce.number().int().min(1, 'Mes invalido').max(12, 'Mes invalido').optional(),
+    ano: z.coerce.number().int().min(2000, 'Ano invalido').max(2200, 'Ano invalido').optional(),
+  })
+  .transform((q) => {
+    const agora = new Date();
+    return {
+      mes: q.mes ?? agora.getMonth() + 1,
+      ano: q.ano ?? agora.getFullYear(),
+    };
+  });

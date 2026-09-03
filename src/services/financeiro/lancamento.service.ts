@@ -54,8 +54,9 @@ interface LancamentoMesclado {
 }
 
 const TRANSICOES_PERMITIDAS: Record<StatusLancamento, StatusLancamento[]> = {
-  [StatusLancamento.PENDENTE]: [StatusLancamento.PAGO, StatusLancamento.CANCELADO, StatusLancamento.IGNORADO],
-  [StatusLancamento.PAGO]: [StatusLancamento.PENDENTE, StatusLancamento.CANCELADO, StatusLancamento.IGNORADO],
+  [StatusLancamento.PENDENTE]: [StatusLancamento.PAGO, StatusLancamento.RECEBIDO, StatusLancamento.CANCELADO, StatusLancamento.IGNORADO],
+  [StatusLancamento.PAGO]: [StatusLancamento.PENDENTE, StatusLancamento.RECEBIDO, StatusLancamento.CANCELADO, StatusLancamento.IGNORADO],
+  [StatusLancamento.RECEBIDO]: [StatusLancamento.PENDENTE, StatusLancamento.PAGO, StatusLancamento.CANCELADO, StatusLancamento.IGNORADO],
   [StatusLancamento.CANCELADO]: [StatusLancamento.PENDENTE],
   [StatusLancamento.IGNORADO]: [StatusLancamento.PENDENTE],
 };
@@ -96,6 +97,7 @@ export class LancamentoService {
 
     const dataHora = new Date(dto.dataHora);
     const afetaConta = !usaCartaoCredito(dto);
+    const status = dto.status ?? StatusLancamento.PENDENTE;
 
     return prisma.$transaction(async (tx) => {
       const cobertura = await this.obterCobertura(tx, familiaId, dto.tipo, dto.categoriaId ?? null, dataHora);
@@ -104,7 +106,7 @@ export class LancamentoService {
         ...dto,
         tagsIds: dto.tagsIds ? [...new Set(dto.tagsIds)] : undefined,
         dataHora,
-        status: StatusLancamento.PENDENTE,
+        status,
         origem: OrigemLancamento.MANUAL,
         orcamentoId: cobertura.orcamentoId,
       });
@@ -112,7 +114,7 @@ export class LancamentoService {
       const deltas = calcularDeltasImpacto({
         tipo: dto.tipo,
         valor: dto.valor,
-        status: StatusLancamento.PENDENTE,
+        status,
         contaOrigemId: dto.contaOrigemId,
         contaDestinoId: dto.contaDestinoId ?? null,
         afetaConta,
@@ -447,7 +449,7 @@ export class LancamentoService {
       switch (linha.tipo) {
         case TipoLancamento.RECEITA:
           totalReceitas += total;
-          if (linha.status === StatusLancamento.PAGO) receitasRecebidas += total;
+          if (linha.status === StatusLancamento.PAGO || linha.status === StatusLancamento.RECEBIDO) receitasRecebidas += total;
           else receitasPendentes += total;
           break;
         case TipoLancamento.DESPESA:
@@ -476,6 +478,8 @@ export class LancamentoService {
       despesasPendentes: arredondar2(despesasPendentes),
       receitasRecebidas: arredondar2(receitasRecebidas),
       receitasPendentes: arredondar2(receitasPendentes),
+      totalPrevisto: arredondar2(receitasPendentes - despesasPendentes),
+      saldoPrevistoPeriodo: arredondar2(totalReceitas - totalDespesas + (receitasPendentes - despesasPendentes)),
     };
   }
 
@@ -582,8 +586,13 @@ export class LancamentoService {
     categoriaId?: string | null;
     subcategoriaId?: string | null;
     cartaoId?: string | null;
+    status?: StatusLancamento;
   }) {
     const { tipo } = dados;
+
+    if (dados.status === StatusLancamento.RECEBIDO && tipo !== TipoLancamento.RECEITA) {
+      throw new AppError('Status RECEBIDO so e permitido para lancamentos do tipo receita', 400);
+    }
 
     if (tipo !== TipoLancamento.AJUSTE && dados.valor <= 0) {
       throw new AppError('Valor deve ser maior que zero', 400);
@@ -732,7 +741,7 @@ export class LancamentoService {
       observacoes: dto.observacoes !== undefined ? dto.observacoes : existente.observacoes,
       responsavelId: dto.responsavelId ?? existente.responsavelId,
       localizacao: dto.localizacao !== undefined ? dto.localizacao : existente.localizacao,
-      status: existente.status as StatusLancamento,
+      status: (dto.status ?? existente.status) as StatusLancamento,
       dataHora: existente.dataHora,
     };
   }
@@ -755,6 +764,7 @@ export class LancamentoService {
     if (dto.observacoes !== undefined) data.observacoes = dto.observacoes;
     if (dto.responsavelId !== undefined) data.responsavelId = dto.responsavelId;
     if (dto.localizacao !== undefined) data.localizacao = dto.localizacao;
+    if (dto.status !== undefined) data.status = dto.status;
     return data;
   }
 

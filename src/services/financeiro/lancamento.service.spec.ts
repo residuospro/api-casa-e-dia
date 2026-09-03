@@ -646,5 +646,7 @@ describe('LancamentoService.resumo', () => {
     expect(resumo.totalTransferencias).toBe(100);
     expect(resumo.totalAjustes).toBe(10);
     expect(resumo.quantidadeLancamentos).toBe(9);
+    expect(resumo.totalPrevisto).toBe(50);
+    expect(resumo.saldoPrevistoPeriodo).toBe(300);
   });
 });

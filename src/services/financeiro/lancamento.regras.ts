@@ -55,7 +55,7 @@ export function obterMesAno(dataHora: Date): { mes: number; ano: number } {
 
 /** Status que compoem o consumo do orcamento. */
 export function contaParaConsumo(status: StatusLancamento): boolean {
-  return status === StatusLancamento.PENDENTE || status === StatusLancamento.PAGO;
+  return status === StatusLancamento.PENDENTE || status === StatusLancamento.PAGO || status === StatusLancamento.RECEBIDO;
 }
 
 export function calcularDeltasImpacto(estado: EstadoFinanceiroLancamento): DeltaSaldo[] {
@@ -73,7 +73,9 @@ export function calcularDeltasImpacto(estado: EstadoFinanceiroLancamento): Delta
   }
 
   const campo: DeltaSaldo['campo'] =
-    estado.status === StatusLancamento.PAGO ? 'saldoAtual' : 'saldoPrevisto';
+    estado.status === StatusLancamento.PAGO || estado.status === StatusLancamento.RECEBIDO
+      ? 'saldoAtual'
+      : 'saldoPrevisto';
 
   switch (estado.tipo) {
     case TipoLancamento.RECEITA:

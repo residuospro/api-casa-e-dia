@@ -82,6 +82,7 @@ export enum TipoLancamento {
 export enum StatusLancamento {
   PENDENTE = 'PENDENTE',
   PAGO = 'PAGO',
+  RECEBIDO = 'RECEBIDO',
   CANCELADO = 'CANCELADO',
   IGNORADO = 'IGNORADO',
 }

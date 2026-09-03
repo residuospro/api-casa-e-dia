@@ -230,7 +230,7 @@ export const lancamentoRepository = {
       where: {
         familiaId,
         dataHora: { gte: inicio, lte: fim },
-        status: { in: [StatusLancamento.PAGO, StatusLancamento.PENDENTE] },
+        status: { in: [StatusLancamento.PAGO, StatusLancamento.PENDENTE, StatusLancamento.RECEBIDO] },
       },
       _sum: { valor: true },
       _count: { _all: true },
@@ -243,7 +243,7 @@ export const lancamentoRepository = {
       where: {
         familiaId,
         dataHora: { gte: inicio, lte: fim },
-        status: { in: [StatusLancamento.PAGO, StatusLancamento.PENDENTE] },
+        status: { in: [StatusLancamento.PAGO, StatusLancamento.PENDENTE, StatusLancamento.RECEBIDO] },
         tipo: { in: [TipoLancamento.RECEITA, TipoLancamento.DESPESA] },
       },
       _sum: { valor: true },
@@ -257,7 +257,7 @@ export const lancamentoRepository = {
       where: {
         familiaId,
         dataHora: { gte: inicio, lte: fim },
-        status: { in: [StatusLancamento.PAGO, StatusLancamento.PENDENTE] },
+        status: { in: [StatusLancamento.PAGO, StatusLancamento.PENDENTE, StatusLancamento.RECEBIDO] },
         formaPagamento: { not: null },
       },
       _sum: { valor: true },
@@ -279,13 +279,13 @@ export const lancamentoRepository = {
                END AS valor_assinado
         FROM "lancamentos"
         WHERE "familiaId" = ${familiaId}
-          AND "status" IN ('PAGO', 'PENDENTE')
+          AND "status" IN ('PAGO', 'PENDENTE', 'RECEBIDO')
           AND "dataHora" >= ${inicio} AND "dataHora" <= ${fim}
         UNION ALL
         SELECT "contaDestinoId", "valor"
         FROM "lancamentos"
         WHERE "familiaId" = ${familiaId}
-          AND "status" IN ('PAGO', 'PENDENTE')
+          AND "status" IN ('PAGO', 'PENDENTE', 'RECEBIDO')
           AND "tipo" = 'TRANSFERENCIA'
           AND "dataHora" >= ${inicio} AND "dataHora" <= ${fim}
       )
@@ -309,10 +309,96 @@ export const lancamentoRepository = {
              COUNT(*) AS quantidade
       FROM "lancamentos"
       WHERE "familiaId" = ${familiaId}
-        AND "status" IN ('PAGO', 'PENDENTE')
+        AND "status" IN ('PAGO', 'PENDENTE', 'RECEBIDO')
         AND "dataHora" >= ${inicio} AND "dataHora" <= ${fim}
       GROUP BY 1
       ORDER BY 1
     `;
+  },
+
+  /**
+   * Fluxo de caixa separado por moeda e status (para o dashboard).
+   * Devolve um registro por periodo + moeda + status com receitas/despesas.
+   */
+  fluxoPorPeriodo(familiaId: string, inicio: Date, fim: Date, granularidade: GranularidadePeriodo) {
+    const unidades = { DIA: 'day', SEMANA: 'week', MES: 'month' } as const;
+    const unidade = unidades[granularidade];
+    return prisma.$queryRaw<
+      {
+        periodo: Date;
+        moeda: string;
+        status: string;
+        receitas: Prisma.Decimal;
+        despesas: Prisma.Decimal;
+        quantidade: bigint;
+      }[]
+    >`
+      SELECT date_trunc(${unidade}, "dataHora") AS periodo,
+             moeda,
+             status,
+             SUM(CASE WHEN "tipo" = 'RECEITA' THEN "valor" ELSE 0 END) AS receitas,
+             SUM(CASE WHEN "tipo" = 'DESPESA' THEN "valor" ELSE 0 END) AS despesas,
+             COUNT(*) AS quantidade
+      FROM "lancamentos"
+      WHERE "familiaId" = ${familiaId}
+        AND "status" IN ('PAGO', 'PENDENTE', 'RECEBIDO')
+        AND "dataHora" >= ${inicio} AND "dataHora" < ${fim}
+      GROUP BY 1, 2, 3
+      ORDER BY 1, 2
+    `;
+  },
+
+  /** Saida financeira por categoria e moeda (somente despesas do dashboard). */
+  despesasPorCategoriaMoeda(familiaId: string, inicio: Date, fim: Date) {
+    return prisma.lancamento.groupBy({
+      by: ['categoriaId', 'moeda'],
+      where: {
+        familiaId,
+        dataHora: { gte: inicio, lt: fim },
+        status: { in: [StatusLancamento.PAGO, StatusLancamento.PENDENTE, StatusLancamento.RECEBIDO] },
+        tipo: TipoLancamento.DESPESA,
+      },
+      _sum: { valor: true },
+      _count: { _all: true },
+    });
+  },
+
+  /** Saida financeira por responsavel e moeda (somente despesas do dashboard). */
+  porResponsavel(familiaId: string, inicio: Date, fim: Date) {
+    return prisma.lancamento.groupBy({
+      by: ['responsavelId', 'moeda'],
+      where: {
+        familiaId,
+        dataHora: { gte: inicio, lt: fim },
+        status: { in: [StatusLancamento.PAGO, StatusLancamento.PENDENTE, StatusLancamento.RECEBIDO] },
+        tipo: TipoLancamento.DESPESA,
+      },
+      _sum: { valor: true },
+      _count: { _all: true },
+    });
+  },
+
+  /** Lancamentos PAGO/RECEBIDO no periodo (para reconstruir a evolucao patrimonial). */
+  pagosNoPeriodo(familiaId: string, inicio: Date, fim: Date) {
+    return prisma.lancamento.findMany({
+      where: {
+        familiaId,
+        dataHora: { gte: inicio, lte: fim },
+        status: { in: [StatusLancamento.PAGO, StatusLancamento.RECEBIDO] },
+      },
+      select: {
+        id: true,
+        tipo: true,
+        valor: true,
+        moeda: true,
+        cartaoId: true,
+        formaPagamento: true,
+        orcamentoId: true,
+        contaOrigemId: true,
+        contaDestinoId: true,
+        dataHora: true,
+      },
+      orderBy: { dataHora: 'asc' },
+    });
   },
 };

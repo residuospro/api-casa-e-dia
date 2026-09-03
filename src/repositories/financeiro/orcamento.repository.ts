@@ -136,14 +136,14 @@ export const orcamentoRepository = {
 
   listConsumoByOrcamentoIn(tx: TxClient, orcamentoId: string) {
     return tx.lancamento.findMany({
-      where: { orcamentoId, status: { in: [StatusLancamento.PAGO, StatusLancamento.PENDENTE] } },
+      where: { orcamentoId, status: { in: [StatusLancamento.PAGO, StatusLancamento.PENDENTE, StatusLancamento.RECEBIDO] } },
       select: { id: true, valor: true, status: true, contaOrigemId: true, cartaoId: true, formaPagamento: true },
     });
   },
 
   sumConsumoIn(tx: TxClient, orcamentoId: string) {
     return tx.lancamento.aggregate({
-      where: { orcamentoId, status: { in: [StatusLancamento.PAGO, StatusLancamento.PENDENTE] } },
+      where: { orcamentoId, status: { in: [StatusLancamento.PAGO, StatusLancamento.PENDENTE, StatusLancamento.RECEBIDO] } },
       _sum: { valor: true },
     });
   },

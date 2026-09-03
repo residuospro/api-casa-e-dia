@@ -52,6 +52,7 @@ export interface CriarLancamentoDTO {
   responsavelId: string;
   localizacao?: string | null;
   tagsIds?: string[];
+  status?: StatusLancamento;
 }
 
 export interface AtualizarLancamentoDTO {
@@ -72,6 +73,7 @@ export interface AtualizarLancamentoDTO {
   responsavelId?: string;
   localizacao?: string | null;
   tagsIds?: string[];
+  status?: StatusLancamento;
 }
 
 export interface AlterarStatusLancamentoDTO {
