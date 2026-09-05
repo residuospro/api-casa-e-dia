@@ -17,10 +17,15 @@ export function initRecorrenciaScheduler(): void {
     }
   });
 
-  console.log('[RecorrenciaScheduler] Agendado para executar todo domingo à meia-noite (0 0 * * 0)');
+  console.log(
+    '[RecorrenciaScheduler] Agendado para executar todo domingo à meia-noite (0 0 * * 0)',
+  );
 }
 
-function calcularDiasAteFimCiclo(ciclo: { inicio: Date; duracaoDias: number; proximaRenovacao: Date | null } | null, recorrencia: Recorrencia): number {
+function calcularDiasAteFimCiclo(
+  ciclo: { inicio: Date; duracaoDias: number; proximaRenovacao: Date | null } | null,
+  recorrencia: Recorrencia,
+): number {
   if (ciclo) {
     const fimCiclo = ciclo.proximaRenovacao
       ? new Date(ciclo.proximaRenovacao)
@@ -41,7 +46,10 @@ function calcularDiasAteFimCiclo(ciclo: { inicio: Date; duracaoDias: number; pro
   return DIAS_A_FRENTE_SEM_CICLO;
 }
 
-export async function estenderRecorrencias(): Promise<{ tarefasProcessadas: number; execucoesGeradas: number }> {
+export async function estenderRecorrencias(): Promise<{
+  tarefasProcessadas: number;
+  execucoesGeradas: number;
+}> {
   const tarefas = await tarefaRepository.findTarefasComRecorrencia();
 
   if (tarefas.length === 0) {
@@ -59,7 +67,11 @@ export async function estenderRecorrencias(): Promise<{ tarefasProcessadas: numb
     const recorrencia = tarefa.recorrencia as Recorrencia | null;
     if (!recorrencia) continue;
 
-    const ciclo = (tarefa as any).ciclo as { inicio: Date; duracaoDias: number; proximaRenovacao: Date | null } | null;
+    const ciclo = (tarefa as any).ciclo as {
+      inicio: Date;
+      duracaoDias: number;
+      proximaRenovacao: Date | null;
+    } | null;
     const diasAFrente = calcularDiasAteFimCiclo(ciclo, recorrencia);
 
     const execucoesFuturas = await tarefaRepository.countExecucoesFuturas(tarefa.id, agora);

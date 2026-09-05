@@ -10,6 +10,11 @@ router.get('/me', authMiddleware, (req: any, res) => {
 });
 
 router.get('/me/perfil', authMiddleware, userController.perfil);
-router.put('/me/perfil', authMiddleware, upload.single('fotoPerfil'), userController.atualizarPerfil);
+router.put(
+  '/me/perfil',
+  authMiddleware,
+  upload.single('fotoPerfil'),
+  userController.atualizarPerfil,
+);
 
 export default router;

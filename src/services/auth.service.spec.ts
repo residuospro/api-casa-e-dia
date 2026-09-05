@@ -1,8 +1,11 @@
 import { AuthService } from '../services/auth.service';
 import { AppError } from '../services/auth.service';
+import bcrypt from 'bcryptjs';
 
 jest.mock('../utils/avatar', () => ({
-  generateAvatar: jest.fn().mockReturnValue('https://api.dicebear.com/9.x/avataaars/svg?seed=Kallif'),
+  generateAvatar: jest
+    .fn()
+    .mockReturnValue('https://api.dicebear.com/9.x/avataaars/svg?seed=Kallif'),
 }));
 
 jest.mock('../repositories/auth.repository', () => ({
@@ -62,7 +65,14 @@ describe('AuthService', () => {
       });
       expect(resultado).toEqual({
         accessToken: expect.any(String),
-        usuario: { id: 'user-id', nome: dto.nome, email: dto.email, celular: null, fotoPerfil: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Kallif', genero: 'MASCULINO' },
+        usuario: {
+          id: 'user-id',
+          nome: dto.nome,
+          email: dto.email,
+          celular: null,
+          fotoPerfil: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Kallif',
+          genero: 'MASCULINO',
+        },
       });
     });
 
@@ -79,8 +89,6 @@ describe('AuthService', () => {
 
     it('deve definir senha e retornar token', async () => {
       const { familyRepository } = jest.requireMock('../repositories/family.repository');
-      const bcrypt = require('bcryptjs');
-      const senhaHash = bcrypt.hashSync(dto.senha, 10);
 
       familyRepository.findUsuarioByToken.mockResolvedValue({
         id: 'user-id',
@@ -98,7 +106,10 @@ describe('AuthService', () => {
 
       const resultado = await service.primeiroAcesso(dto);
 
-      expect(familyRepository.updateSenhaAndPrimeiroAcesso).toHaveBeenCalledWith('user-id', expect.any(String));
+      expect(familyRepository.updateSenhaAndPrimeiroAcesso).toHaveBeenCalledWith(
+        'user-id',
+        expect.any(String),
+      );
       expect(resultado).toEqual({
         accessToken: expect.any(String),
         familiaId: 'fam-id',
@@ -147,7 +158,6 @@ describe('AuthService', () => {
     const dto = { email: 'kallif@email.com', senha: '123456' };
 
     it('deve validar senha no login', async () => {
-      const bcrypt = require('bcryptjs');
       const senhaHash = bcrypt.hashSync(dto.senha, 10);
 
       authRepository.findUsuarioByEmail.mockResolvedValue({
@@ -166,7 +176,14 @@ describe('AuthService', () => {
       expect(resultado).toEqual({
         accessToken: expect.any(String),
         familiaId: 'fam-id',
-        usuario: { id: 'user-id', nome: 'Kallif', email: dto.email, celular: null, fotoPerfil: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Kallif', genero: 'MASCULINO' },
+        usuario: {
+          id: 'user-id',
+          nome: 'Kallif',
+          email: dto.email,
+          celular: null,
+          fotoPerfil: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Kallif',
+          genero: 'MASCULINO',
+        },
       });
     });
 

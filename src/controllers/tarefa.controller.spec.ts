@@ -3,11 +3,17 @@ import express from 'express';
 import cors from 'cors';
 import tarefaRoutes from '../routes/tarefa.routes';
 import { errorMiddleware } from '../middlewares/error.middleware';
-import { authMiddleware } from '../middlewares/auth.middleware';
 
 jest.mock('../middlewares/auth.middleware', () => ({
   authMiddleware: jest.fn((req: any, _res: any, next: any) => {
-    req.usuario = { id: 'user-id', nome: 'Teste', email: 'teste@email.com', fotoPerfil: null, genero: null, primeiroAcesso: false };
+    req.usuario = {
+      id: 'user-id',
+      nome: 'Teste',
+      email: 'teste@email.com',
+      fotoPerfil: null,
+      genero: null,
+      primeiroAcesso: false,
+    };
     next();
   }),
 }));
@@ -77,7 +83,15 @@ function makeTarefa(overrides = {}) {
     criadoEm: new Date().toISOString(),
     atualizadoEm: new Date().toISOString(),
     execucoes: [
-      { id: 'exec-id', data: new Date().toISOString(), status: 'AGENDADA', pontosObtidos: null, concluidoPorId: null, concluidoEm: null, notificacaoCriada: false },
+      {
+        id: 'exec-id',
+        data: new Date().toISOString(),
+        status: 'AGENDADA',
+        pontosObtidos: null,
+        concluidoPorId: null,
+        concluidoEm: null,
+        notificacaoCriada: false,
+      },
     ],
     ciclo: null,
     responsavelAtual: { id: 'membro-id', nome: 'Maria', fotoPerfil: null, genero: 'FEMININO' },
@@ -110,18 +124,19 @@ describe('TarefaController (integração)', () => {
     it('deve criar tarefa com dados válidos', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id', nome: 'Família Teste' });
       familyRepository.findMembroByUsuarioAndFamilia.mockResolvedValue({ id: 'criador-id' });
-      familyRepository.findMembroById.mockResolvedValue({ id: 'membro-id', usuario: { id: 'usuario-id' } });
+      familyRepository.findMembroById.mockResolvedValue({
+        id: 'membro-id',
+        usuario: { id: 'usuario-id' },
+      });
       tarefaRepository.create.mockResolvedValue(makeTarefa());
 
-      const response = await request(app)
-        .post('/families/fam-id/tarefas')
-        .send({
-          titulo: 'Lavar louça',
-          tipo: 'FAMILIAR',
-          categoria: 'CASA',
-          modoDistribuicao: 'FIXA',
-          responsavelAtualId: 'membro-id',
-        });
+      const response = await request(app).post('/families/fam-id/tarefas').send({
+        titulo: 'Lavar louça',
+        tipo: 'FAMILIAR',
+        categoria: 'CASA',
+        modoDistribuicao: 'FIXA',
+        responsavelAtualId: 'membro-id',
+      });
 
       expect(response.status).toBe(201);
       expect(response.body.titulo).toBe('Lavar louça');
@@ -130,9 +145,7 @@ describe('TarefaController (integração)', () => {
     it('deve retornar 400 com dados inválidos', async () => {
       familyRepository.findMembroByUsuarioAndFamilia.mockResolvedValue({ id: 'criador-id' });
 
-      const response = await request(app)
-        .post('/families/fam-id/tarefas')
-        .send({});
+      const response = await request(app).post('/families/fam-id/tarefas').send({});
 
       expect(response.status).toBe(400);
     });

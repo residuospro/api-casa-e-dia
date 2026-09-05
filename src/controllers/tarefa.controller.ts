@@ -3,7 +3,13 @@ import { tarefaService } from '../services/tarefa.service';
 import { familyRepository } from '../repositories/family.repository';
 import { estenderRecorrencias } from '../scheduler/recorrencia';
 import { AuthRequest } from '../middlewares/auth.middleware';
-import { criarTarefaSchema, atualizarTarefaSchema, concluirTarefaSchema, concluirExecucaoSchema, atualizarExecucaoSchema } from '../validators/tarefa.validator';
+import {
+  criarTarefaSchema,
+  atualizarTarefaSchema,
+  concluirTarefaSchema,
+  concluirExecucaoSchema,
+  atualizarExecucaoSchema,
+} from '../validators/tarefa.validator';
 import { ZodError } from 'zod';
 
 export const tarefaController = {
@@ -21,16 +27,17 @@ export const tarefaController = {
         return;
       }
 
-      const execucoes = dados.execucoes?.map((e) => ({
-        data: new Date(e.data),
-        status: e.status,
-        pontosObtidos: e.pontosObtidos,
-        concluidoPorId: e.concluidoPorId,
-        concluidoEm: e.concluidoEm ? new Date(e.concluidoEm) : null,
-        notificacaoCriada: e.notificacaoCriada,
-        iteracao: e.iteracao,
-        executorId: e.executorId ?? null,
-      })) ?? null;
+      const execucoes =
+        dados.execucoes?.map((e) => ({
+          data: new Date(e.data),
+          status: e.status,
+          pontosObtidos: e.pontosObtidos,
+          concluidoPorId: e.concluidoPorId,
+          concluidoEm: e.concluidoEm ? new Date(e.concluidoEm) : null,
+          notificacaoCriada: e.notificacaoCriada,
+          iteracao: e.iteracao,
+          executorId: e.executorId ?? null,
+        })) ?? null;
 
       const resultado = await tarefaService.criar({
         titulo: dados.titulo,
@@ -81,7 +88,9 @@ export const tarefaController = {
       const rawPagina = paginacao?.pagina ?? query.pagina ?? query.page;
       const rawPorPagina = paginacao?.por_pagina ?? query.por_pagina ?? query.porPagina;
       const filtro = query.filtro as Record<string, string | string[]> | undefined;
-      const ordenacao = query.ordenacao as { coluna: string; direcao: 'asc' | 'desc' }[] | undefined;
+      const ordenacao = query.ordenacao as
+        | { coluna: string; direcao: 'asc' | 'desc' }[]
+        | undefined;
 
       const pagina = Math.max(1, Number(rawPagina) || 1);
       const porPagina = Math.min(100, Math.max(1, Number(rawPorPagina) || 10));
@@ -116,7 +125,12 @@ export const tarefaController = {
         return;
       }
 
-      const resultado = await tarefaService.obter(familiaId, id, membro.id, membro.permissao ?? undefined);
+      const resultado = await tarefaService.obter(
+        familiaId,
+        id,
+        membro.id,
+        membro.permissao ?? undefined,
+      );
       res.json(resultado);
     } catch (err) {
       next(err);
@@ -251,7 +265,12 @@ export const tarefaController = {
     try {
       const { familiaId, execucaoId } = req.params;
       const dados = atualizarExecucaoSchema.parse(req.body);
-      const resultado = await tarefaService.atualizarExecucao(familiaId, execucaoId, dados.data ? new Date(dados.data) : undefined, dados.executorId);
+      const resultado = await tarefaService.atualizarExecucao(
+        familiaId,
+        execucaoId,
+        dados.data ? new Date(dados.data) : undefined,
+        dados.executorId,
+      );
       res.json(resultado);
     } catch (err) {
       if (err instanceof ZodError) {
@@ -275,7 +294,11 @@ export const tarefaController = {
         return;
       }
 
-      const resultado = await tarefaService.urgentes(familiaId, membro.id, membro.permissao ?? undefined);
+      const resultado = await tarefaService.urgentes(
+        familiaId,
+        membro.id,
+        membro.permissao ?? undefined,
+      );
       res.json(resultado);
     } catch (err) {
       next(err);
@@ -305,7 +328,11 @@ export const tarefaController = {
         return;
       }
 
-      const resultado = await tarefaService.resumo(familiaId, membro.id, membro.permissao ?? undefined);
+      const resultado = await tarefaService.resumo(
+        familiaId,
+        membro.id,
+        membro.permissao ?? undefined,
+      );
       res.json(resultado);
     } catch (err) {
       next(err);

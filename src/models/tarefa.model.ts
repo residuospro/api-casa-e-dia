@@ -1,4 +1,10 @@
-import { TipoTarefa, Categoria, ModoDistribuicao, StatusExecucao, FrequenciaRecorrencia } from './enums';
+import {
+  TipoTarefa,
+  Categoria,
+  ModoDistribuicao,
+  StatusExecucao,
+  FrequenciaRecorrencia,
+} from './enums';
 
 export interface Recorrencia {
   frequencia: FrequenciaRecorrencia;

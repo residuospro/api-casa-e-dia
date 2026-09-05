@@ -2,12 +2,15 @@ import { tarefaRepository } from '../repositories/tarefa.repository';
 import { familyRepository } from '../repositories/family.repository';
 import { cicloRepository } from '../repositories/ciclo.repository';
 import { AppError } from './auth.service';
-import { TipoTarefa, ModoDistribuicao, StatusExecucao, NotificacaoTipo, FrequenciaRecorrencia, Categoria } from '../models/enums';
 import {
-  CriarTarefaDTO,
-  AtualizarTarefaDTO,
-  Recorrencia,
-} from '../models/tarefa.model';
+  TipoTarefa,
+  ModoDistribuicao,
+  StatusExecucao,
+  NotificacaoTipo,
+  FrequenciaRecorrencia,
+  Categoria,
+} from '../models/enums';
+import { CriarTarefaDTO, AtualizarTarefaDTO, Recorrencia } from '../models/tarefa.model';
 import { notificationService } from './notification.service';
 
 export async function renovarExecucoesTarefa(
@@ -23,9 +26,10 @@ export async function renovarExecucoesTarefa(
   const iteracaoAnterior = iteracao != null ? iteracao - 1 : null;
   const temIteracaoInformada = naoCanceladas.some((e) => e.iteracao != null);
 
-  const base = iteracaoAnterior != null && temIteracaoInformada
-    ? naoCanceladas.filter((e) => e.iteracao === iteracaoAnterior)
-    : naoCanceladas;
+  const base =
+    iteracaoAnterior != null && temIteracaoInformada
+      ? naoCanceladas.filter((e) => e.iteracao === iteracaoAnterior)
+      : naoCanceladas;
 
   const novas: { data: Date; status: string; iteracao?: number | null }[] = [];
 
@@ -125,9 +129,7 @@ export function gerarExecucoesRecorrentes(
 }
 
 function calcularDataLimiteInferiorCiclo(ciclo: { inicio: Date; renovadoEm: Date | null }): Date {
-  return ciclo.renovadoEm
-    ? new Date(ciclo.renovadoEm)
-    : new Date(ciclo.inicio);
+  return ciclo.renovadoEm ? new Date(ciclo.renovadoEm) : new Date(ciclo.inicio);
 }
 
 function validarDatasExecucoes(
@@ -162,7 +164,7 @@ function validarDatasExecucoes(
 function transformParticipantes(tarefa: any) {
   if (!tarefa.participantes || !Array.isArray(tarefa.participantes)) return tarefa;
   const participantesId = tarefa.participantes.map((pt: any) => pt.membroId).filter(Boolean);
-  const { participantes, ...rest } = tarefa;
+  const { participantes: _participantes, ...rest } = tarefa;
   return {
     ...rest,
     participantesId,
@@ -214,7 +216,9 @@ export class TarefaService {
           throw new AppError(`Participante ${membroId} não é membro ativo desta família`, 400);
         }
       }
-      const duplicados = dto.participantesId.filter((id, i) => dto.participantesId!.indexOf(id) !== i);
+      const duplicados = dto.participantesId.filter(
+        (id, i) => dto.participantesId!.indexOf(id) !== i,
+      );
       if (duplicados.length > 0) {
         throw new AppError('Participantes duplicados não são permitidos', 400);
       }
@@ -256,21 +260,31 @@ export class TarefaService {
             throw new AppError('Nenhum participante do ciclo é um membro ativo da família', 400);
           }
 
-          const contagem = await tarefaRepository.countTarefasAtivasByCicloGroupByResponsavel(cicloRevezamento.id);
+          const contagem = await tarefaRepository.countTarefasAtivasByCicloGroupByResponsavel(
+            cicloRevezamento.id,
+          );
           const mapaContagem = new Map(contagem.map((c) => [c.responsavelAtualId!, c._count.id]));
           const menorCount = Math.min(...participantesValidos.map((p) => mapaContagem.get(p) ?? 0));
-          const candidatos = participantesValidos.filter((p) => (mapaContagem.get(p) ?? 0) === menorCount);
+          const candidatos = participantesValidos.filter(
+            (p) => (mapaContagem.get(p) ?? 0) === menorCount,
+          );
           dto.responsavelAtualId = candidatos[Math.floor(Math.random() * candidatos.length)];
         }
 
-        if (dto.responsavelAtualId && !cicloRevezamento.participantes.includes(dto.responsavelAtualId)) {
+        if (
+          dto.responsavelAtualId &&
+          !cicloRevezamento.participantes.includes(dto.responsavelAtualId)
+        ) {
           throw new AppError('Responsável não faz parte do ciclo', 400);
         }
 
         if (dto.execucoes && dto.execucoes.length > 0) {
           const referencia = cicloRevezamento.proximaRenovacao
             ? new Date(cicloRevezamento.proximaRenovacao)
-            : new Date(cicloRevezamento.inicio.getTime() + cicloRevezamento.duracaoDias * 24 * 60 * 60 * 1000);
+            : new Date(
+                cicloRevezamento.inicio.getTime() +
+                  cicloRevezamento.duracaoDias * 24 * 60 * 60 * 1000,
+              );
 
           for (const execucao of dto.execucoes) {
             if (execucao.data > referencia) {
@@ -342,7 +356,7 @@ export class TarefaService {
 
       if (!usuarioIdNotificacao) {
         const membros = await familyRepository.findMembrosByFamilia(tarefa.familiaId);
-        const admin = membros.find(m => m.permissao === 'ADMIN' && m.usuario?.id);
+        const admin = membros.find((m) => m.permissao === 'ADMIN' && m.usuario?.id);
         usuarioIdNotificacao = admin?.usuario?.id;
       }
 
@@ -408,9 +422,7 @@ export class TarefaService {
       delete filtro.dependente;
 
       const membros = await familyRepository.findMembrosByFamilia(familiaId);
-      const ids = membros
-        .filter((m: any) => m.dependente === isDependente)
-        .map((m: any) => m.id);
+      const ids = membros.filter((m: any) => m.dependente === isDependente).map((m: any) => m.id);
 
       if (ids.length > 0) {
         filtro.responsavelAtualId = ids.length === 1 ? ids[0] : ids;
@@ -419,10 +431,14 @@ export class TarefaService {
       }
     }
 
-    const { data, total } = await tarefaRepository.findByFamiliaWithFilters(
-      familiaId,
-      { filtro, ordenacao: options.ordenacao, pagina: options.pagina, porPagina: options.porPagina, membroId: options.membroId, permissao: options.permissao },
-    );
+    const { data, total } = await tarefaRepository.findByFamiliaWithFilters(familiaId, {
+      filtro,
+      ordenacao: options.ordenacao,
+      pagina: options.pagina,
+      porPagina: options.porPagina,
+      membroId: options.membroId,
+      permissao: options.permissao,
+    });
 
     const ultimaPagina = Math.ceil(total / options.porPagina);
 
@@ -539,7 +555,8 @@ export class TarefaService {
       throw new AppError('Tarefa pessoal deve ter um responsável', 400);
     }
 
-    const responsavelFinal = dto.responsavelAtualId !== undefined ? dto.responsavelAtualId : tarefa.responsavelAtualId;
+    const responsavelFinal =
+      dto.responsavelAtualId !== undefined ? dto.responsavelAtualId : tarefa.responsavelAtualId;
     const participantesFinais = dto.participantesId !== undefined ? dto.participantesId : null;
 
     if (dto.tipo === TipoTarefa.PESSOAL) {
@@ -556,7 +573,9 @@ export class TarefaService {
           throw new AppError(`Participante ${membroId} não é membro ativo desta família`, 400);
         }
       }
-      const duplicados = dto.participantesId.filter((id, i) => dto.participantesId!.indexOf(id) !== i);
+      const duplicados = dto.participantesId.filter(
+        (id, i) => dto.participantesId!.indexOf(id) !== i,
+      );
       if (duplicados.length > 0) {
         throw new AppError('Participantes duplicados não são permitidos', 400);
       }
@@ -603,7 +622,10 @@ export class TarefaService {
         if (e.id && iteracaoPorId.has(e.id)) {
           return { ...e, iteracao: e.iteracao ?? iteracaoPorId.get(e.id) ?? null };
         }
-        return { ...e, iteracao: e.iteracao ?? (tarefa as any).ciclo?.iteracao ?? tarefa.cicloIteracao ?? 0 };
+        return {
+          ...e,
+          iteracao: e.iteracao ?? (tarefa as any).ciclo?.iteracao ?? tarefa.cicloIteracao ?? 0,
+        };
       });
     }
 
@@ -628,9 +650,13 @@ export class TarefaService {
       const mudou = JSON.stringify(recorrenciaAntiga) !== JSON.stringify(recorrenciaNova);
 
       if (mudou && recorrenciaNova) {
-        let cicloTarefa: { inicio: Date; renovadoEm: Date | null; proximaRenovacao: Date | null } | null = null;
+        let cicloTarefa: {
+          inicio: Date;
+          renovadoEm: Date | null;
+          proximaRenovacao: Date | null;
+        } | null = null;
         if (tarefa.cicloId) {
-          cicloTarefa = await cicloRepository.findById(tarefa.cicloId) as any;
+          cicloTarefa = (await cicloRepository.findById(tarefa.cicloId)) as any;
         }
 
         let diasAFrente = 7;
@@ -638,7 +664,10 @@ export class TarefaService {
         if (cicloTarefa) {
           fimCiclo = cicloTarefa.proximaRenovacao
             ? new Date(cicloTarefa.proximaRenovacao)
-            : new Date(cicloTarefa.inicio.getTime() + (cicloTarefa as any).duracaoDias * 24 * 60 * 60 * 1000);
+            : new Date(
+                cicloTarefa.inicio.getTime() +
+                  (cicloTarefa as any).duracaoDias * 24 * 60 * 60 * 1000,
+              );
           const agora = new Date();
           const diffMs = fimCiclo.getTime() - agora.getTime();
           diasAFrente = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
@@ -655,10 +684,19 @@ export class TarefaService {
         );
         validarDatasExecucoes(futurasAtualizar, cicloTarefa);
         if (futurasAtualizar.length > 0) {
-          const comExecutor = atribuirExecucoes(futurasAtualizar, responsavelFinal, participantesFinais);
+          const comExecutor = atribuirExecucoes(
+            futurasAtualizar,
+            responsavelFinal,
+            participantesFinais,
+          );
           await tarefaRepository.createExecucoes(
             tarefaId,
-            comExecutor.map((e) => ({ data: e.data, status: e.status, iteracao: 0, executorId: e.executorId })),
+            comExecutor.map((e) => ({
+              data: e.data,
+              status: e.status,
+              iteracao: 0,
+              executorId: e.executorId,
+            })),
           );
         }
 
@@ -698,7 +736,10 @@ export class TarefaService {
       throw new AppError('Execução não encontrada', 404);
     }
 
-    if (execucao.status !== StatusExecucao.AGENDADA && execucao.status !== StatusExecucao.ATRASADA) {
+    if (
+      execucao.status !== StatusExecucao.AGENDADA &&
+      execucao.status !== StatusExecucao.ATRASADA
+    ) {
       throw new AppError('Execução já foi concluída ou cancelada', 400);
     }
 
@@ -734,7 +775,10 @@ export class TarefaService {
       throw new AppError('Execução não encontrada', 404);
     }
 
-    if (execucao.status !== StatusExecucao.AGENDADA && execucao.status !== StatusExecucao.ATRASADA) {
+    if (
+      execucao.status !== StatusExecucao.AGENDADA &&
+      execucao.status !== StatusExecucao.ATRASADA
+    ) {
       throw new AppError('Execução já foi concluída ou cancelada', 400);
     }
 
@@ -765,7 +809,10 @@ export class TarefaService {
       throw new AppError('Execução não encontrada', 404);
     }
 
-    if (execucao.status !== StatusExecucao.AGENDADA && execucao.status !== StatusExecucao.ATRASADA) {
+    if (
+      execucao.status !== StatusExecucao.AGENDADA &&
+      execucao.status !== StatusExecucao.ATRASADA
+    ) {
       throw new AppError('Execução já foi concluída ou cancelada', 400);
     }
 
@@ -778,7 +825,12 @@ export class TarefaService {
     };
   }
 
-  async atualizarExecucao(familiaId: string, execucaoId: string, data?: Date, executorId?: string | null) {
+  async atualizarExecucao(
+    familiaId: string,
+    execucaoId: string,
+    data?: Date,
+    executorId?: string | null,
+  ) {
     const execucao = await tarefaRepository.findExecucaoById(execucaoId);
     if (!execucao) {
       throw new AppError('Execução não encontrada', 404);
@@ -788,9 +840,13 @@ export class TarefaService {
       throw new AppError('Execução não encontrada', 404);
     }
 
-    let cicloTarefa: { inicio: Date; renovadoEm: Date | null; proximaRenovacao: Date | null } | null = null;
+    let cicloTarefa: {
+      inicio: Date;
+      renovadoEm: Date | null;
+      proximaRenovacao: Date | null;
+    } | null = null;
     if (execucao.tarefa.cicloId) {
-      cicloTarefa = await cicloRepository.findById(execucao.tarefa.cicloId) as any;
+      cicloTarefa = (await cicloRepository.findById(execucao.tarefa.cicloId)) as any;
     }
 
     const updateData: Record<string, any> = {};
@@ -841,9 +897,10 @@ export class TarefaService {
       const atrasadas = execucoes.filter((e: any) => e.status === 'ATRASADA');
       const agendadas = execucoes.filter((e: any) => e.status === 'AGENDADA');
 
-      const maisUrgente = atrasadas.length > 0
-        ? atrasadas.reduce((mais: any, e: any) => e.data < mais.data ? e : mais)
-        : agendadas.reduce((mais: any, e: any) => e.data < mais.data ? e : mais, agendadas[0]);
+      const maisUrgente =
+        atrasadas.length > 0
+          ? atrasadas.reduce((mais: any, e: any) => (e.data < mais.data ? e : mais))
+          : agendadas.reduce((mais: any, e: any) => (e.data < mais.data ? e : mais), agendadas[0]);
 
       const dataRef = maisUrgente?.data ?? new Date(0);
       const ehAtrasada = atrasadas.length > 0;

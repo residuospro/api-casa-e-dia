@@ -6,7 +6,14 @@ import { errorMiddleware } from '../middlewares/error.middleware';
 
 jest.mock('../middlewares/auth.middleware', () => ({
   authMiddleware: jest.fn((req: any, _res: any, next: any) => {
-    req.usuario = { id: 'user-id', nome: 'Teste', email: 'teste@email.com', fotoPerfil: null, genero: null, primeiroAcesso: false };
+    req.usuario = {
+      id: 'user-id',
+      nome: 'Teste',
+      email: 'teste@email.com',
+      fotoPerfil: null,
+      genero: null,
+      primeiroAcesso: false,
+    };
     next();
   }),
 }));
@@ -103,9 +110,7 @@ describe('CicloController (integração)', () => {
     });
 
     it('deve retornar 400 com dados inválidos', async () => {
-      const response = await request(app)
-        .post('/families/fam-id/ciclos')
-        .send({});
+      const response = await request(app).post('/families/fam-id/ciclos').send({});
 
       expect(response.status).toBe(400);
     });
@@ -157,7 +162,9 @@ describe('CicloController (integração)', () => {
 
     it('deve atualizar inicio do ciclo', async () => {
       cicloRepository.findById.mockResolvedValue(makeCiclo());
-      cicloRepository.update.mockResolvedValue(makeCiclo({ inicio: new Date('2026-07-13T00:00:00') }));
+      cicloRepository.update.mockResolvedValue(
+        makeCiclo({ inicio: new Date('2026-07-13T00:00:00') }),
+      );
 
       const response = await request(app)
         .put('/families/fam-id/ciclos/ciclo-id')
@@ -253,8 +260,7 @@ describe('CicloController (integração)', () => {
       ]);
       tarefaRepository.createExecucoes.mockResolvedValue({ count: 2 });
 
-      const response = await request(app)
-        .post('/families/fam-id/ciclos/ciclo-id/rotacionar');
+      const response = await request(app).post('/families/fam-id/ciclos/ciclo-id/rotacionar');
 
       expect(response.status).toBe(200);
       expect(response.body.message).toBe('Tarefas rotacionadas com sucesso');

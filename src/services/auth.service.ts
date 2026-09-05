@@ -58,11 +58,9 @@ export class AuthService {
       fotoPerfil: dto.fotoPerfil,
     });
 
-    const accessToken = jwt.sign(
-      { sub: usuario.id, email: usuario.email },
-      jwtConfig.secret,
-      { expiresIn: jwtConfig.expiresIn as any },
-    );
+    const accessToken = jwt.sign({ sub: usuario.id, email: usuario.email }, jwtConfig.secret, {
+      expiresIn: jwtConfig.expiresIn as any,
+    });
 
     return {
       accessToken,
@@ -94,11 +92,9 @@ export class AuthService {
     const senhaHash = await bcrypt.hash(dto.senha, 10);
     await familyRepository.updateSenhaAndPrimeiroAcesso(usuario.id, senhaHash);
 
-    const accessToken = jwt.sign(
-      { sub: usuario.id, email: usuario.email },
-      jwtConfig.secret,
-      { expiresIn: jwtConfig.expiresIn as any },
-    );
+    const accessToken = jwt.sign({ sub: usuario.id, email: usuario.email }, jwtConfig.secret, {
+      expiresIn: jwtConfig.expiresIn as any,
+    });
 
     const perfil = await authRepository.findUserFamilyProfile(usuario.id);
 
@@ -175,11 +171,9 @@ export class AuthService {
       throw new AppError('Credenciais inválidas', 401);
     }
 
-    const accessToken = jwt.sign(
-      { sub: usuario.id, email: usuario.email },
-      jwtConfig.secret,
-      { expiresIn: jwtConfig.expiresIn as any },
-    );
+    const accessToken = jwt.sign({ sub: usuario.id, email: usuario.email }, jwtConfig.secret, {
+      expiresIn: jwtConfig.expiresIn as any,
+    });
 
     const perfil = await authRepository.findUserFamilyProfile(usuario.id);
 

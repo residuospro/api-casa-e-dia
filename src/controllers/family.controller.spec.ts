@@ -19,10 +19,6 @@ jest.mock('../services/family.service', () => ({
   },
 }));
 
-function mockReq(body: any, params?: any) {
-  return { body, params } as any;
-}
-
 function mockReqAuth(body: any, params?: any) {
   return { body, params, usuario: { id: 'user-id' } } as any;
 }
@@ -41,7 +37,11 @@ describe('FamilyController', () => {
     it('deve retornar 201 ao criar família', async () => {
       const body = { nome: 'Família Teste', tipoPessoa: 'MARIDO' };
       const { familyService } = jest.requireMock('../services/family.service');
-      familyService.criarFamilia.mockResolvedValue({ id: 'fam-id', nome: 'Família Teste', _count: { membros: 1 } });
+      familyService.criarFamilia.mockResolvedValue({
+        id: 'fam-id',
+        nome: 'Família Teste',
+        _count: { membros: 1 },
+      });
 
       const req = mockReqAuth(body);
       const res = mockRes();
@@ -50,7 +50,11 @@ describe('FamilyController', () => {
       await familyController.criarFamilia(req, res, next);
 
       expect(res.status).toHaveBeenCalledWith(201);
-      expect(res.json).toHaveBeenCalledWith({ id: 'fam-id', nome: 'Família Teste', _count: { membros: 1 } });
+      expect(res.json).toHaveBeenCalledWith({
+        id: 'fam-id',
+        nome: 'Família Teste',
+        _count: { membros: 1 },
+      });
     });
 
     it('deve retornar 400 se nome estiver vazio', async () => {
@@ -157,7 +161,10 @@ describe('FamilyController', () => {
     });
 
     it('deve retornar 400 se email for inválido', async () => {
-      const req = mockReqAuth({ email: 'invalido', tipoPessoa: 'ESPOSA', permissao: 'USUARIO' }, { familiaId: 'fam-id' });
+      const req = mockReqAuth(
+        { email: 'invalido', tipoPessoa: 'ESPOSA', permissao: 'USUARIO' },
+        { familiaId: 'fam-id' },
+      );
       const res = mockRes();
       const next = jest.fn();
 
@@ -167,7 +174,10 @@ describe('FamilyController', () => {
     });
 
     it('deve retornar 400 se email estiver faltando', async () => {
-      const req = mockReqAuth({ tipoPessoa: 'ESPOSA', permissao: 'USUARIO' }, { familiaId: 'fam-id' });
+      const req = mockReqAuth(
+        { tipoPessoa: 'ESPOSA', permissao: 'USUARIO' },
+        { familiaId: 'fam-id' },
+      );
       const res = mockRes();
       const next = jest.fn();
 
@@ -187,7 +197,9 @@ describe('FamilyController', () => {
       const params = { familiaId: 'fam-id' };
 
       const { familyService } = jest.requireMock('../services/family.service');
-      familyService.cadastrarDependente.mockResolvedValue({ message: 'Dependente cadastrado com sucesso' });
+      familyService.cadastrarDependente.mockResolvedValue({
+        message: 'Dependente cadastrado com sucesso',
+      });
 
       const req = mockReqAuth(body, params);
       const res = mockRes();
@@ -216,7 +228,9 @@ describe('FamilyController', () => {
   describe('listarConvitesPendentes', () => {
     it('deve retornar 200 com lista de convites', async () => {
       const { familyService } = jest.requireMock('../services/family.service');
-      familyService.listarConvitesPendentes.mockResolvedValue([{ id: 'c1', familia: { nome: 'Família Teste' } }]);
+      familyService.listarConvitesPendentes.mockResolvedValue([
+        { id: 'c1', familia: { nome: 'Família Teste' } },
+      ]);
 
       const req = mockReqAuth({});
       const res = mockRes();

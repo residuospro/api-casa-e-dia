@@ -1,5 +1,3 @@
-import * as bcrypt from 'bcryptjs';
-import crypto from 'crypto';
 import { familyRepository } from '../repositories/family.repository';
 import { sendInviteEmail } from './email.service';
 import { AppError } from './auth.service';
@@ -247,7 +245,13 @@ export class FamilyService {
     const resultado = membros.map((m) => ({
       text: m.nome ?? m.usuario?.nome ?? 'Sem nome',
       value: m.id,
-      fotoPerfil: m.fotoPerfil ?? m.usuario?.fotoPerfil ?? generateAvatar(m.nome ?? m.usuario?.nome ?? 'Sem nome', m.genero ?? m.usuario?.genero ?? null),
+      fotoPerfil:
+        m.fotoPerfil ??
+        m.usuario?.fotoPerfil ??
+        generateAvatar(
+          m.nome ?? m.usuario?.nome ?? 'Sem nome',
+          m.genero ?? m.usuario?.genero ?? null,
+        ),
     }));
     definirCacheMembros('opcoes', familiaId, resultado);
     return resultado;

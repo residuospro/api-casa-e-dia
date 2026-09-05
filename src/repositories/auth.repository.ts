@@ -11,7 +11,15 @@ export const authRepository = {
   findUsuarioById(id: string) {
     return prisma.usuario.findUnique({
       where: { id },
-      select: { id: true, nome: true, email: true, celular: true, fotoPerfil: true, genero: true, primeiroAcesso: true },
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        celular: true,
+        fotoPerfil: true,
+        genero: true,
+        primeiroAcesso: true,
+      },
     });
   },
 

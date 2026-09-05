@@ -1,4 +1,4 @@
-import { getApps } from 'firebase-admin/app';
+import { getApps, initializeApp, cert } from 'firebase-admin/app';
 import fs from 'fs';
 import path from 'path';
 import { env } from './env';
@@ -12,7 +12,6 @@ export function ensureFirebaseAdmin() {
   }
 
   console.log('[FCM Debug] Firebase Admin não inicializado, inicializando...');
-  const { initializeApp, cert } = require('firebase-admin/app');
   const serviceAccountPath = path.resolve(__dirname, '../../serviceAccountKey.json');
   const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf-8'));
   try {

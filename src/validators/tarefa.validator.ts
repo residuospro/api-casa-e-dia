@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { TipoTarefa, Categoria, ModoDistribuicao, StatusExecucao, FrequenciaRecorrencia } from '../models/enums';
+import {
+  TipoTarefa,
+  Categoria,
+  ModoDistribuicao,
+  StatusExecucao,
+  FrequenciaRecorrencia,
+} from '../models/enums';
 
 const execucaoSchema = z.object({
   id: z.string().optional(),
@@ -15,9 +21,22 @@ const execucaoSchema = z.object({
 
 const recorrenciaSchema = z.object({
   frequencia: z.nativeEnum(FrequenciaRecorrencia),
-  horarios: z.array(z.string().regex(/^\d{2}:\d{2}$/, 'Horário deve ter formato HH:mm')).min(1, 'Pelo menos um horário é obrigatório'),
-  dataInicio: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).or(z.date()).optional(),
-  dataFim: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).or(z.date()).nullable().optional(),
+  horarios: z
+    .array(z.string().regex(/^\d{2}:\d{2}$/, 'Horário deve ter formato HH:mm'))
+    .min(1, 'Pelo menos um horário é obrigatório'),
+  dataInicio: z
+    .string()
+    .datetime()
+    .or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/))
+    .or(z.date())
+    .optional(),
+  dataFim: z
+    .string()
+    .datetime()
+    .or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/))
+    .or(z.date())
+    .nullable()
+    .optional(),
 });
 
 export const criarTarefaSchema = z.object({

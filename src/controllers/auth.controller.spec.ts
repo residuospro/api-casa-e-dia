@@ -1,5 +1,6 @@
 import { authController } from './auth.controller';
-import { authService, AppError } from '../services/auth.service';
+import { authService } from '../services/auth.service';
+import { ZodError } from 'zod';
 
 jest.mock('../services/auth.service', () => ({
   authService: {
@@ -65,8 +66,14 @@ describe('AuthController', () => {
 
     it('deve retornar 400 se validação falhar', async () => {
       (cadastrarSchema.parse as jest.Mock).mockImplementation(() => {
-        const { ZodError } = require('zod');
-        throw new ZodError([{ message: 'Email inválido', path: ['email'], code: 'invalid_string', validation: 'email' }]);
+        throw new ZodError([
+          {
+            message: 'Email inválido',
+            path: ['email'],
+            code: 'invalid_string',
+            validation: 'email',
+          },
+        ]);
       });
 
       const req = mockReq({});
@@ -76,9 +83,7 @@ describe('AuthController', () => {
       await authController.cadastrar(req, res, next);
 
       expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ error: 'Bad Request' }),
-      );
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'Bad Request' }));
       expect(authService.cadastrar).not.toHaveBeenCalled();
     });
   });
@@ -132,8 +137,14 @@ describe('AuthController', () => {
 
     it('deve retornar 400 se validação falhar', async () => {
       (primeiroAcessoSchema.parse as jest.Mock).mockImplementation(() => {
-        const { ZodError } = require('zod');
-        throw new ZodError([{ message: 'Token é obrigatório', path: ['token'], code: 'invalid_string', validation: 'regex' }]);
+        throw new ZodError([
+          {
+            message: 'Token é obrigatório',
+            path: ['token'],
+            code: 'invalid_string',
+            validation: 'regex',
+          },
+        ]);
       });
 
       const req = mockReq({});

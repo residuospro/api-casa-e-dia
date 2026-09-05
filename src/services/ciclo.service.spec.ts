@@ -171,9 +171,15 @@ describe('CicloService', () => {
       cicloRepository.findById.mockResolvedValue(makeCiclo());
       cicloRepository.update.mockResolvedValue(makeCiclo({ nome: 'Novo Ciclo', duracaoDias: 14 }));
 
-      const resultado = await service.atualizar('fam-id', 'ciclo-id', { nome: 'Novo Ciclo', duracaoDias: 14 });
+      const resultado = await service.atualizar('fam-id', 'ciclo-id', {
+        nome: 'Novo Ciclo',
+        duracaoDias: 14,
+      });
 
-      expect(cicloRepository.update).toHaveBeenCalledWith('ciclo-id', { nome: 'Novo Ciclo', duracaoDias: 14 });
+      expect(cicloRepository.update).toHaveBeenCalledWith('ciclo-id', {
+        nome: 'Novo Ciclo',
+        duracaoDias: 14,
+      });
       expect(resultado.nome).toBe('Novo Ciclo');
     });
 
@@ -245,7 +251,9 @@ describe('CicloService', () => {
         { data: new Date('2026-07-08T10:00:00'), status: 'CONCLUIDA' },
       ]);
       tarefaRepository.createExecucoes.mockResolvedValue({ count: 2 });
-      cicloRepository.findById.mockResolvedValue(makeCiclo({ proximaRenovacao: new Date(), iteracao: 0 }));
+      cicloRepository.findById.mockResolvedValue(
+        makeCiclo({ proximaRenovacao: new Date(), iteracao: 0 }),
+      );
 
       const resultado = await service.rotacionar('fam-id', 'ciclo-id');
 
@@ -279,7 +287,9 @@ describe('CicloService', () => {
         { data: new Date('2026-07-22T10:00:00'), status: 'ATRASADA', iteracao: 1 },
       ]);
       tarefaRepository.createExecucoes.mockResolvedValue({ count: 2 });
-      cicloRepository.findById.mockResolvedValue(makeCiclo({ proximaRenovacao: new Date(), iteracao: 1 }));
+      cicloRepository.findById.mockResolvedValue(
+        makeCiclo({ proximaRenovacao: new Date(), iteracao: 1 }),
+      );
 
       await service.rotacionar('fam-id', 'ciclo-id');
 
@@ -304,7 +314,9 @@ describe('CicloService', () => {
     it('deve lançar erro se ciclo ainda não venceu', async () => {
       const dataRecente = new Date();
       dataRecente.setDate(dataRecente.getDate() - 1);
-      cicloRepository.findById.mockResolvedValue(makeCiclo({ inicio: dataRecente, duracaoDias: 7 }));
+      cicloRepository.findById.mockResolvedValue(
+        makeCiclo({ inicio: dataRecente, duracaoDias: 7 }),
+      );
 
       await expect(service.rotacionar('fam-id', 'ciclo-id')).rejects.toThrow(AppError);
     });
@@ -328,29 +340,29 @@ describe('CicloService', () => {
   });
 
   describe('listarAtivos', () => {
-  it('deve retornar ciclos ativos no formato text/value', async () => {
-    familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id' });
-    cicloRepository.findCiclosAtivos.mockResolvedValue([
-      { id: 'c1', nome: 'Ciclo A', inicio: new Date(), duracaoDias: 7, proximaRenovacao: null },
-      { id: 'c2', nome: 'Ciclo B', inicio: new Date(), duracaoDias: 14, proximaRenovacao: null },
-    ]);
+    it('deve retornar ciclos ativos no formato text/value', async () => {
+      familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id' });
+      cicloRepository.findCiclosAtivos.mockResolvedValue([
+        { id: 'c1', nome: 'Ciclo A', inicio: new Date(), duracaoDias: 7, proximaRenovacao: null },
+        { id: 'c2', nome: 'Ciclo B', inicio: new Date(), duracaoDias: 14, proximaRenovacao: null },
+      ]);
 
-    const resultado = await service.listarAtivos('fam-id');
+      const resultado = await service.listarAtivos('fam-id');
 
-    expect(resultado).toEqual([
-      { text: 'Ciclo A', value: 'c1' },
-      { text: 'Ciclo B', value: 'c2' },
-    ]);
+      expect(resultado).toEqual([
+        { text: 'Ciclo A', value: 'c1' },
+        { text: 'Ciclo B', value: 'c2' },
+      ]);
+    });
+
+    it('deve lançar erro se família não existir', async () => {
+      familyRepository.findFamiliaById.mockResolvedValue(null);
+
+      await expect(service.listarAtivos('invalido')).rejects.toThrow(AppError);
+    });
   });
 
-  it('deve lançar erro se família não existir', async () => {
-    familyRepository.findFamiliaById.mockResolvedValue(null);
-
-    await expect(service.listarAtivos('invalido')).rejects.toThrow(AppError);
-  });
-});
-
-describe('alterarAtivo', () => {
+  describe('alterarAtivo', () => {
     it('deve ativar ciclo', async () => {
       cicloRepository.findById.mockResolvedValue(makeCiclo({ ativo: false }));
       cicloRepository.update.mockResolvedValue(makeCiclo({ ativo: true }));
@@ -402,7 +414,9 @@ describe('alterarAtivo', () => {
       familyRepository.findMembrosAtivosByFamilia.mockResolvedValue([
         { id: 'm1', usuarioId: 'u1', nome: 'Maria' },
       ]);
-      notificationRepository.findCicloNotificationExists.mockResolvedValue({ id: 'notif-existente' });
+      notificationRepository.findCicloNotificationExists.mockResolvedValue({
+        id: 'notif-existente',
+      });
 
       const resultado = await service.verificarCiclos('fam-id');
 

@@ -4,14 +4,17 @@ import { jwtConfig } from '../config/jwt';
 import { authRepository } from '../repositories/auth.repository';
 
 export interface AuthRequest extends Request {
-  usuario?: { id: string; nome: string; email: string; fotoPerfil: string | null; genero: string | null; primeiroAcesso: boolean };
+  usuario?: {
+    id: string;
+    nome: string;
+    email: string;
+    fotoPerfil: string | null;
+    genero: string | null;
+    primeiroAcesso: boolean;
+  };
 }
 
-export async function authMiddleware(
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction,
-) {
+export async function authMiddleware(req: AuthRequest, res: Response, next: NextFunction) {
   const header = req.headers.authorization;
 
   if (!header?.startsWith('Bearer ')) {

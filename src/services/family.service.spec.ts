@@ -56,7 +56,13 @@ function makeMembro(overrides = {}) {
     status: 'PENDENTE',
     conviteEnviado: true,
     criadoEm: new Date(),
-    usuario: { id: 'user-id', nome: 'Maria', email: 'maria@email.com', fotoPerfil: null, genero: 'FEMININO' },
+    usuario: {
+      id: 'user-id',
+      nome: 'Maria',
+      email: 'maria@email.com',
+      fotoPerfil: null,
+      genero: 'FEMININO',
+    },
     ...overrides,
   };
 }
@@ -80,7 +86,11 @@ describe('FamilyService', () => {
 
     it('deve buscar usuário por email, criar membro e enviar convite', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id', nome: 'Família Teste' });
-      authRepository.findUsuarioByEmail.mockResolvedValue({ id: 'user-id', nome: 'Maria', email: 'maria@email.com' });
+      authRepository.findUsuarioByEmail.mockResolvedValue({
+        id: 'user-id',
+        nome: 'Maria',
+        email: 'maria@email.com',
+      });
       familyRepository.findMembroByUsuarioAndFamilia.mockResolvedValue(null);
       familyRepository.createMembroFamilia.mockResolvedValue({ id: 'mem-id' });
       familyRepository.findMembroById.mockResolvedValue(makeMembro());
@@ -102,7 +112,11 @@ describe('FamilyService', () => {
 
     it('deve criar membro mesmo se email falhar', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id', nome: 'Família Teste' });
-      authRepository.findUsuarioByEmail.mockResolvedValue({ id: 'user-id', nome: 'Maria', email: 'maria@email.com' });
+      authRepository.findUsuarioByEmail.mockResolvedValue({
+        id: 'user-id',
+        nome: 'Maria',
+        email: 'maria@email.com',
+      });
       familyRepository.findMembroByUsuarioAndFamilia.mockResolvedValue(null);
       familyRepository.createMembroFamilia.mockResolvedValue({ id: 'mem-id' });
       familyRepository.findMembroById.mockResolvedValue(makeMembro({ conviteEnviado: false }));
@@ -130,7 +144,11 @@ describe('FamilyService', () => {
 
     it('deve lançar erro se usuário já for membro', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id', nome: 'Família Teste' });
-      authRepository.findUsuarioByEmail.mockResolvedValue({ id: 'user-id', nome: 'Maria', email: 'maria@email.com' });
+      authRepository.findUsuarioByEmail.mockResolvedValue({
+        id: 'user-id',
+        nome: 'Maria',
+        email: 'maria@email.com',
+      });
       familyRepository.findMembroByUsuarioAndFamilia.mockResolvedValue({ id: 'mem-id' });
 
       await expect(service.convidarMembro(dto)).rejects.toThrow(AppError);
@@ -141,7 +159,17 @@ describe('FamilyService', () => {
     it('deve cadastrar dependente sem usuario', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id', nome: 'Família Teste' });
       familyRepository.createMembroFamilia.mockResolvedValue(
-        makeMembro({ usuarioId: null, nome: 'Pedrinho', fotoPerfil: null, tipoPessoa: 'FILHO', permissao: 'USUARIO', dependente: true, conviteEnviado: true, status: 'ACEITO', usuario: null }),
+        makeMembro({
+          usuarioId: null,
+          nome: 'Pedrinho',
+          fotoPerfil: null,
+          tipoPessoa: 'FILHO',
+          permissao: 'USUARIO',
+          dependente: true,
+          conviteEnviado: true,
+          status: 'ACEITO',
+          usuario: null,
+        }),
       );
 
       const resultado = await service.cadastrarDependente({
@@ -169,7 +197,17 @@ describe('FamilyService', () => {
     it('deve cadastrar dependente com fotoPerfil', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id', nome: 'Família Teste' });
       familyRepository.createMembroFamilia.mockResolvedValue(
-        makeMembro({ usuarioId: null, nome: 'Pedrinho', fotoPerfil: 'http://foto.com/pedrinho.jpg', tipoPessoa: 'FILHO', permissao: 'USUARIO', dependente: true, conviteEnviado: true, status: 'ACEITO', usuario: null }),
+        makeMembro({
+          usuarioId: null,
+          nome: 'Pedrinho',
+          fotoPerfil: 'http://foto.com/pedrinho.jpg',
+          tipoPessoa: 'FILHO',
+          permissao: 'USUARIO',
+          dependente: true,
+          conviteEnviado: true,
+          status: 'ACEITO',
+          usuario: null,
+        }),
       );
 
       const resultado = await service.cadastrarDependente({
@@ -198,12 +236,14 @@ describe('FamilyService', () => {
     it('deve lançar erro se família não existir', async () => {
       familyRepository.findFamiliaById.mockResolvedValue(null);
 
-      await expect(service.cadastrarDependente({
-        familiaId: 'inválido',
-        nome: 'Pedrinho',
-        genero: 'MASCULINO',
-        tipoPessoa: 'FILHO',
-      })).rejects.toThrow(AppError);
+      await expect(
+        service.cadastrarDependente({
+          familiaId: 'inválido',
+          nome: 'Pedrinho',
+          genero: 'MASCULINO',
+          tipoPessoa: 'FILHO',
+        }),
+      ).rejects.toThrow(AppError);
     });
   });
 
@@ -242,7 +282,9 @@ describe('FamilyService', () => {
     });
 
     it('deve lançar erro se convite não for do usuário', async () => {
-      familyRepository.findMembroById.mockResolvedValue(makeMembro({ usuarioId: 'outro-user', status: 'PENDENTE' }));
+      familyRepository.findMembroById.mockResolvedValue(
+        makeMembro({ usuarioId: 'outro-user', status: 'PENDENTE' }),
+      );
 
       await expect(service.responderConvite('user-id', 'mem-id', true)).rejects.toThrow(AppError);
     });
@@ -264,7 +306,15 @@ describe('FamilyService', () => {
     it('deve reenviar convite', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id', nome: 'Família Teste' });
       familyRepository.findMembroById.mockResolvedValue(
-        makeMembro({ usuario: { id: 'user-id', nome: 'Maria', email: 'maria@email.com', tokenPrimeiroAcesso: 'token-valido', tokenExpiraEm: new Date(Date.now() + 86400000) } }),
+        makeMembro({
+          usuario: {
+            id: 'user-id',
+            nome: 'Maria',
+            email: 'maria@email.com',
+            tokenPrimeiroAcesso: 'token-valido',
+            tokenExpiraEm: new Date(Date.now() + 86400000),
+          },
+        }),
       );
       sendInviteEmail.mockResolvedValue(undefined);
 
@@ -287,8 +337,30 @@ describe('FamilyService', () => {
     it('deve listar membros da família', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id' });
       familyRepository.findMembrosByFamilia.mockResolvedValue([
-        makeMembro({ id: 'm1', usuarioId: 'u1', nome: null, tipoPessoa: 'MARIDO', permissao: 'ADMIN', usuario: { id: 'u1', nome: 'João', email: 'joao@email.com', fotoPerfil: null, genero: 'MASCULINO' } }),
-        makeMembro({ id: 'm2', usuarioId: null, nome: 'Pedrinho', tipoPessoa: 'FILHO', permissao: null, dependente: true, conviteEnviado: false, usuario: null }),
+        makeMembro({
+          id: 'm1',
+          usuarioId: 'u1',
+          nome: null,
+          tipoPessoa: 'MARIDO',
+          permissao: 'ADMIN',
+          usuario: {
+            id: 'u1',
+            nome: 'João',
+            email: 'joao@email.com',
+            fotoPerfil: null,
+            genero: 'MASCULINO',
+          },
+        }),
+        makeMembro({
+          id: 'm2',
+          usuarioId: null,
+          nome: 'Pedrinho',
+          tipoPessoa: 'FILHO',
+          permissao: null,
+          dependente: true,
+          conviteEnviado: false,
+          usuario: null,
+        }),
       ]);
 
       const resultado = await service.listarMembros('fam-id');
@@ -308,7 +380,22 @@ describe('FamilyService', () => {
   describe('obterMembro', () => {
     it('deve retornar membro', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id' });
-      familyRepository.findMembroById.mockResolvedValue(makeMembro({ id: 'm1', usuarioId: 'u1', nome: null, tipoPessoa: 'MARIDO', permissao: 'ADMIN', usuario: { id: 'u1', nome: 'João', email: 'joao@email.com', fotoPerfil: null, genero: 'MASCULINO' } }));
+      familyRepository.findMembroById.mockResolvedValue(
+        makeMembro({
+          id: 'm1',
+          usuarioId: 'u1',
+          nome: null,
+          tipoPessoa: 'MARIDO',
+          permissao: 'ADMIN',
+          usuario: {
+            id: 'u1',
+            nome: 'João',
+            email: 'joao@email.com',
+            fotoPerfil: null,
+            genero: 'MASCULINO',
+          },
+        }),
+      );
 
       const resultado = await service.obterMembro('fam-id', 'm1');
 
@@ -326,8 +413,23 @@ describe('FamilyService', () => {
   describe('atualizarMembro', () => {
     it('deve atualizar tipoPessoa de um dependente', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id' });
-      familyRepository.findMembroById.mockResolvedValue({ id: 'm1', usuarioId: null, familiaId: 'fam-id' });
-      familyRepository.updateMembro.mockResolvedValue(makeMembro({ id: 'm1', usuarioId: null, nome: 'Pedrinho', tipoPessoa: 'FILHA', permissao: null, dependente: true, conviteEnviado: false, usuario: null }));
+      familyRepository.findMembroById.mockResolvedValue({
+        id: 'm1',
+        usuarioId: null,
+        familiaId: 'fam-id',
+      });
+      familyRepository.updateMembro.mockResolvedValue(
+        makeMembro({
+          id: 'm1',
+          usuarioId: null,
+          nome: 'Pedrinho',
+          tipoPessoa: 'FILHA',
+          permissao: null,
+          dependente: true,
+          conviteEnviado: false,
+          usuario: null,
+        }),
+      );
 
       const resultado = await service.atualizarMembro('fam-id', 'm1', { tipoPessoa: 'FILHA' });
 
@@ -337,8 +439,24 @@ describe('FamilyService', () => {
 
     it('deve atualizar genero de um dependente', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id' });
-      familyRepository.findMembroById.mockResolvedValue({ id: 'm1', usuarioId: null, familiaId: 'fam-id' });
-      familyRepository.updateMembro.mockResolvedValue(makeMembro({ id: 'm1', usuarioId: null, nome: 'Pedrinho', genero: 'FEMININO', tipoPessoa: 'FILHA', permissao: null, dependente: true, conviteEnviado: false, usuario: null }));
+      familyRepository.findMembroById.mockResolvedValue({
+        id: 'm1',
+        usuarioId: null,
+        familiaId: 'fam-id',
+      });
+      familyRepository.updateMembro.mockResolvedValue(
+        makeMembro({
+          id: 'm1',
+          usuarioId: null,
+          nome: 'Pedrinho',
+          genero: 'FEMININO',
+          tipoPessoa: 'FILHA',
+          permissao: null,
+          dependente: true,
+          conviteEnviado: false,
+          usuario: null,
+        }),
+      );
 
       const resultado = await service.atualizarMembro('fam-id', 'm1', { genero: 'FEMININO' });
 
@@ -348,48 +466,96 @@ describe('FamilyService', () => {
 
     it('deve atualizar nome e fotoPerfil de um dependente', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id' });
-      familyRepository.findMembroById.mockResolvedValue({ id: 'm1', usuarioId: null, familiaId: 'fam-id' });
-      familyRepository.updateMembro.mockResolvedValue(makeMembro({ id: 'm1', usuarioId: null, nome: 'Novo Nome', fotoPerfil: '/uploads/foto.jpg', tipoPessoa: 'FILHO', permissao: null, dependente: true, conviteEnviado: false, usuario: null }));
+      familyRepository.findMembroById.mockResolvedValue({
+        id: 'm1',
+        usuarioId: null,
+        familiaId: 'fam-id',
+      });
+      familyRepository.updateMembro.mockResolvedValue(
+        makeMembro({
+          id: 'm1',
+          usuarioId: null,
+          nome: 'Novo Nome',
+          fotoPerfil: '/uploads/foto.jpg',
+          tipoPessoa: 'FILHO',
+          permissao: null,
+          dependente: true,
+          conviteEnviado: false,
+          usuario: null,
+        }),
+      );
 
-      const resultado = await service.atualizarMembro('fam-id', 'm1', { nome: 'Novo Nome', fotoPerfil: '/uploads/foto.jpg' });
+      const resultado = await service.atualizarMembro('fam-id', 'm1', {
+        nome: 'Novo Nome',
+        fotoPerfil: '/uploads/foto.jpg',
+      });
 
-      expect(familyRepository.updateMembro).toHaveBeenCalledWith('m1', { nome: 'Novo Nome', fotoPerfil: '/uploads/foto.jpg' });
+      expect(familyRepository.updateMembro).toHaveBeenCalledWith('m1', {
+        nome: 'Novo Nome',
+        fotoPerfil: '/uploads/foto.jpg',
+      });
       expect(resultado.nome).toBe('Novo Nome');
     });
 
     it('deve lançar erro ao definir permissão para dependente', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id' });
-      familyRepository.findMembroById.mockResolvedValue({ id: 'm1', usuarioId: null, familiaId: 'fam-id' });
+      familyRepository.findMembroById.mockResolvedValue({
+        id: 'm1',
+        usuarioId: null,
+        familiaId: 'fam-id',
+      });
 
-      await expect(service.atualizarMembro('fam-id', 'm1', { permissao: 'USUARIO' })).rejects.toThrow(AppError);
+      await expect(
+        service.atualizarMembro('fam-id', 'm1', { permissao: 'USUARIO' }),
+      ).rejects.toThrow(AppError);
     });
 
     it('deve lançar erro ao alterar nome de membro com usuário', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id' });
-      familyRepository.findMembroById.mockResolvedValue({ id: 'm1', usuarioId: 'u1', familiaId: 'fam-id' });
+      familyRepository.findMembroById.mockResolvedValue({
+        id: 'm1',
+        usuarioId: 'u1',
+        familiaId: 'fam-id',
+      });
 
-      await expect(service.atualizarMembro('fam-id', 'm1', { nome: 'Novo' })).rejects.toThrow(AppError);
+      await expect(service.atualizarMembro('fam-id', 'm1', { nome: 'Novo' })).rejects.toThrow(
+        AppError,
+      );
     });
 
     it('deve lançar erro ao alterar genero de membro com usuário', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id' });
-      familyRepository.findMembroById.mockResolvedValue({ id: 'm1', usuarioId: 'u1', familiaId: 'fam-id' });
+      familyRepository.findMembroById.mockResolvedValue({
+        id: 'm1',
+        usuarioId: 'u1',
+        familiaId: 'fam-id',
+      });
 
-      await expect(service.atualizarMembro('fam-id', 'm1', { genero: 'FEMININO' })).rejects.toThrow(AppError);
+      await expect(service.atualizarMembro('fam-id', 'm1', { genero: 'FEMININO' })).rejects.toThrow(
+        AppError,
+      );
     });
 
     it('deve lançar erro ao alterar fotoPerfil de membro com usuário', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id' });
-      familyRepository.findMembroById.mockResolvedValue({ id: 'm1', usuarioId: 'u1', familiaId: 'fam-id' });
+      familyRepository.findMembroById.mockResolvedValue({
+        id: 'm1',
+        usuarioId: 'u1',
+        familiaId: 'fam-id',
+      });
 
-      await expect(service.atualizarMembro('fam-id', 'm1', { fotoPerfil: '/uploads/foto.jpg' })).rejects.toThrow(AppError);
+      await expect(
+        service.atualizarMembro('fam-id', 'm1', { fotoPerfil: '/uploads/foto.jpg' }),
+      ).rejects.toThrow(AppError);
     });
 
     it('deve lançar erro se membro não existir', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id' });
       familyRepository.findMembroById.mockResolvedValue(null);
 
-      await expect(service.atualizarMembro('fam-id', 'm1', { tipoPessoa: 'FILHA' })).rejects.toThrow(AppError);
+      await expect(
+        service.atualizarMembro('fam-id', 'm1', { tipoPessoa: 'FILHA' }),
+      ).rejects.toThrow(AppError);
     });
   });
 
@@ -417,7 +583,9 @@ describe('FamilyService', () => {
       familyRepository.transaction.mockImplementation(async (cb: any) =>
         cb({
           familia: {
-            create: jest.fn().mockResolvedValue({ id: 'fam-id', nome: 'Família Teste', criadoEm: new Date() }),
+            create: jest
+              .fn()
+              .mockResolvedValue({ id: 'fam-id', nome: 'Família Teste', criadoEm: new Date() }),
           },
           membroFamilia: {
             create: jest.fn().mockResolvedValue({ id: 'mem-id' }),
@@ -470,11 +638,18 @@ describe('FamilyService', () => {
     it('deve atualizar nome da família', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id', nome: 'Antigo' });
       familyRepository.findMembroByUsuarioAndFamilia.mockResolvedValue({ permissao: 'ADMIN' });
-      familyRepository.updateFamilia.mockResolvedValue({ id: 'fam-id', nome: 'Novo', _count: { membros: 2 } });
+      familyRepository.updateFamilia.mockResolvedValue({
+        id: 'fam-id',
+        nome: 'Novo',
+        _count: { membros: 2 },
+      });
 
       const resultado = await service.atualizarFamilia('user-id', 'fam-id', 'Novo');
 
-      expect(familyRepository.findMembroByUsuarioAndFamilia).toHaveBeenCalledWith('user-id', 'fam-id');
+      expect(familyRepository.findMembroByUsuarioAndFamilia).toHaveBeenCalledWith(
+        'user-id',
+        'fam-id',
+      );
       expect(resultado.nome).toBe('Novo');
     });
 
@@ -499,7 +674,10 @@ describe('FamilyService', () => {
 
       const resultado = await service.removerFamilia('user-id', 'fam-id');
 
-      expect(familyRepository.findMembroByUsuarioAndFamilia).toHaveBeenCalledWith('user-id', 'fam-id');
+      expect(familyRepository.findMembroByUsuarioAndFamilia).toHaveBeenCalledWith(
+        'user-id',
+        'fam-id',
+      );
       expect(resultado).toEqual({ message: 'Família removida com sucesso' });
     });
 

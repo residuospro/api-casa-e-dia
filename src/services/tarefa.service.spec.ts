@@ -144,8 +144,16 @@ describe('TarefaService', () => {
         criadoPorId: 'criador-id',
         pontos: 10,
         execucoes: [
-          { data: new Date('2026-07-01T18:00:00'), status: StatusExecucao.AGENDADA, pontosObtidos: null },
-          { data: new Date('2026-07-02T18:00:00'), status: StatusExecucao.AGENDADA, pontosObtidos: null },
+          {
+            data: new Date('2026-07-01T18:00:00'),
+            status: StatusExecucao.AGENDADA,
+            pontosObtidos: null,
+          },
+          {
+            data: new Date('2026-07-02T18:00:00'),
+            status: StatusExecucao.AGENDADA,
+            pontosObtidos: null,
+          },
         ],
       });
 
@@ -159,16 +167,28 @@ describe('TarefaService', () => {
         criadoPorId: 'criador-id',
         pontos: 10,
         execucoes: [
-           { data: new Date('2026-07-01T18:00:00'), status: 'AGENDADA', pontosObtidos: null, iteracao: null },
-           { data: new Date('2026-07-02T18:00:00'), status: 'AGENDADA', pontosObtidos: null, iteracao: null },
-         ],
-       });
-       expect(resultado.titulo).toBe('Lavar louça');
-     });
+          {
+            data: new Date('2026-07-01T18:00:00'),
+            status: 'AGENDADA',
+            pontosObtidos: null,
+            iteracao: null,
+          },
+          {
+            data: new Date('2026-07-02T18:00:00'),
+            status: 'AGENDADA',
+            pontosObtidos: null,
+            iteracao: null,
+          },
+        ],
+      });
+      expect(resultado.titulo).toBe('Lavar louça');
+    });
 
     it('deve criar tarefa pessoal com responsável', async () => {
       familyRepository.findFamiliaById.mockResolvedValue({ id: 'fam-id', nome: 'Família Teste' });
-      tarefaRepository.create.mockResolvedValue(makeTarefa({ tipo: 'PESSOAL', titulo: 'Estudar inglês' }));
+      tarefaRepository.create.mockResolvedValue(
+        makeTarefa({ tipo: 'PESSOAL', titulo: 'Estudar inglês' }),
+      );
       mockMembroResponsavel();
 
       const resultado = await service.criar({
@@ -253,7 +273,9 @@ describe('TarefaService', () => {
         iteracao: 0,
       });
       familyRepository.findMembrosAtivosByFamilia.mockResolvedValue([
-        { id: 'm1' }, { id: 'm2' }, { id: 'm3' },
+        { id: 'm1' },
+        { id: 'm2' },
+        { id: 'm3' },
       ]);
       tarefaRepository.countTarefasAtivasByCicloGroupByResponsavel.mockResolvedValue([
         { responsavelAtualId: 'm1', _count: { id: 3 } },
@@ -288,9 +310,7 @@ describe('TarefaService', () => {
         duracaoDias: 7,
         iteracao: 0,
       });
-      familyRepository.findMembrosAtivosByFamilia.mockResolvedValue([
-        { id: 'm1' }, { id: 'm2' },
-      ]);
+      familyRepository.findMembrosAtivosByFamilia.mockResolvedValue([{ id: 'm1' }, { id: 'm2' }]);
       tarefaRepository.countTarefasAtivasByCicloGroupByResponsavel.mockResolvedValue([
         { responsavelAtualId: 'm1', _count: { id: 2 } },
         { responsavelAtualId: 'm2', _count: { id: 2 } },
@@ -321,9 +341,7 @@ describe('TarefaService', () => {
         duracaoDias: 7,
         iteracao: 0,
       });
-      familyRepository.findMembrosAtivosByFamilia.mockResolvedValue([
-        { id: 'm1' }, { id: 'm2' },
-      ]);
+      familyRepository.findMembrosAtivosByFamilia.mockResolvedValue([{ id: 'm1' }, { id: 'm2' }]);
       tarefaRepository.countTarefasAtivasByCicloGroupByResponsavel.mockResolvedValue([]);
       tarefaRepository.create.mockResolvedValue(makeTarefa({ responsavelAtualId: 'm1' }));
 
@@ -440,7 +458,11 @@ describe('TarefaService', () => {
           cicloId: 'ciclo-1',
           criadoPorId: 'criador-id',
           execucoes: [
-            { data: new Date('2026-08-10T18:00:00'), status: StatusExecucao.AGENDADA, pontosObtidos: null },
+            {
+              data: new Date('2026-08-10T18:00:00'),
+              status: StatusExecucao.AGENDADA,
+              pontosObtidos: null,
+            },
           ],
         }),
       ).resolves.toBeDefined();
@@ -467,7 +489,11 @@ describe('TarefaService', () => {
           cicloId: 'ciclo-1',
           criadoPorId: 'criador-id',
           execucoes: [
-            { data: new Date('2026-07-15T18:00:00'), status: StatusExecucao.AGENDADA, pontosObtidos: null },
+            {
+              data: new Date('2026-07-15T18:00:00'),
+              status: StatusExecucao.AGENDADA,
+              pontosObtidos: null,
+            },
           ],
         }),
       ).rejects.toThrow('Execução com data anterior à renovação do ciclo');
@@ -494,7 +520,11 @@ describe('TarefaService', () => {
           cicloId: 'ciclo-1',
           criadoPorId: 'criador-id',
           execucoes: [
-            { data: new Date('2026-08-28T18:00:00'), status: StatusExecucao.AGENDADA, pontosObtidos: null },
+            {
+              data: new Date('2026-08-28T18:00:00'),
+              status: StatusExecucao.AGENDADA,
+              pontosObtidos: null,
+            },
           ],
         }),
       ).rejects.toThrow('Execução com data após o vencimento do ciclo');
@@ -521,7 +551,11 @@ describe('TarefaService', () => {
           cicloId: 'ciclo-1',
           criadoPorId: 'criador-id',
           execucoes: [
-            { data: new Date('2026-08-01T18:00:00'), status: StatusExecucao.AGENDADA, pontosObtidos: null },
+            {
+              data: new Date('2026-08-01T18:00:00'),
+              status: StatusExecucao.AGENDADA,
+              pontosObtidos: null,
+            },
           ],
         }),
       ).rejects.toThrow('Execução com data anterior ao início do ciclo');
@@ -622,7 +656,7 @@ describe('TarefaService', () => {
         { id: 'm2', dependente: true },
       ]);
 
-      const resultado = await service.listar('fam-id', {
+      await service.listar('fam-id', {
         filtro: { dependente: 'false' },
         pagina: 1,
         porPagina: 10,
@@ -642,7 +676,12 @@ describe('TarefaService', () => {
       familyRepository.findFamiliaById.mockResolvedValue(null);
 
       await expect(
-        service.listar('invalido', { pagina: 1, porPagina: 10, paginaResposta: 1, porPaginaResposta: 10 }),
+        service.listar('invalido', {
+          pagina: 1,
+          porPagina: 10,
+          paginaResposta: 1,
+          porPaginaResposta: 10,
+        }),
       ).rejects.toThrow(AppError);
     });
   });
@@ -757,34 +796,34 @@ describe('TarefaService', () => {
       tarefaRepository.findById.mockResolvedValue(makeTarefa());
       tarefaRepository.findExecucaoById.mockResolvedValue(null);
 
-      await expect(
-        service.concluir('fam-id', 'tarefa-id', 'exec-id', 'membro-id'),
-      ).rejects.toThrow(AppError);
+      await expect(service.concluir('fam-id', 'tarefa-id', 'exec-id', 'membro-id')).rejects.toThrow(
+        AppError,
+      );
     });
 
     it('deve lançar erro se execução já estiver concluída', async () => {
       tarefaRepository.findById.mockResolvedValue(makeTarefa());
       tarefaRepository.findExecucaoById.mockResolvedValue(makeExecucao({ status: 'CONCLUIDA' }));
 
-      await expect(
-        service.concluir('fam-id', 'tarefa-id', 'exec-id', 'membro-id'),
-      ).rejects.toThrow(AppError);
+      await expect(service.concluir('fam-id', 'tarefa-id', 'exec-id', 'membro-id')).rejects.toThrow(
+        AppError,
+      );
     });
 
     it('deve lançar erro se tarefa estiver inativa', async () => {
       tarefaRepository.findById.mockResolvedValue(makeTarefa({ ativo: false }));
 
-      await expect(
-        service.concluir('fam-id', 'tarefa-id', 'exec-id', 'membro-id'),
-      ).rejects.toThrow(AppError);
+      await expect(service.concluir('fam-id', 'tarefa-id', 'exec-id', 'membro-id')).rejects.toThrow(
+        AppError,
+      );
     });
 
     it('deve lançar erro se tarefa não existir', async () => {
       tarefaRepository.findById.mockResolvedValue(null);
 
-      await expect(
-        service.concluir('fam-id', 'tarefa-id', 'exec-id', 'membro-id'),
-      ).rejects.toThrow(AppError);
+      await expect(service.concluir('fam-id', 'tarefa-id', 'exec-id', 'membro-id')).rejects.toThrow(
+        AppError,
+      );
     });
   });
 

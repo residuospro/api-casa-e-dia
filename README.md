@@ -143,6 +143,25 @@ src/
 
 ---
 
+## 🚀 Ambiente de Produção
+
+Este repositório é o **backend** do Casa em Dia. O ambiente de produção (PostgreSQL local + API + Frontend + Cloudflare Tunnel) roda em Docker Compose na pasta **`docker/production/`**.
+
+> 📖 **Guia completo de operação em produção:** [docker/production/README.md](docker/production/README.md)
+
+Resumo rápido:
+
+```bash
+cd docker/production
+docker compose up -d --build
+```
+
+Publicado em:
+- Frontend: `https://casaemdia.residuospro.com.br`
+- API: `https://api-casaemdia.residuospro.com.br`
+
+---
+
 ## Licença
 
 MIT

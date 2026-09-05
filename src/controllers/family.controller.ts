@@ -119,7 +119,11 @@ export const familyController = {
       const resultado = await familyService.convidarMembro({
         ...dados,
         familiaId,
-        solicitante: { id: req.usuario!.id, nome: req.usuario!.nome, fotoPerfil: req.usuario!.fotoPerfil },
+        solicitante: {
+          id: req.usuario!.id,
+          nome: req.usuario!.nome,
+          fotoPerfil: req.usuario!.fotoPerfil,
+        },
       });
       res.status(201).json(resultado);
     } catch (err) {

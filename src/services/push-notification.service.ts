@@ -1,5 +1,4 @@
 import { dispositivoPushRepository } from '../repositories/dispositivo-push.repository';
-import { env } from '../config/env';
 
 interface PushPayload {
   titulo: string;
@@ -36,7 +35,10 @@ class PushNotificationService {
 
     for (const dispositivo of dispositivos) {
       try {
-        console.log('[FCM Debug] Enviando FCM para token:', dispositivo.token.substring(0, 30) + '...');
+        console.log(
+          '[FCM Debug] Enviando FCM para token:',
+          dispositivo.token.substring(0, 30) + '...',
+        );
         await this.sendFCM(dispositivo.token, payload);
         console.log('[FCM Debug] FCM enviado com sucesso');
         resultados.push({ token: dispositivo.token, status: 'sent' });

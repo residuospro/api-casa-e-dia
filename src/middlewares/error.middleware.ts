@@ -2,12 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../services/auth.service';
 import multer from 'multer';
 
-export function errorMiddleware(
-  err: Error,
-  _req: Request,
-  res: Response,
-  _next: NextFunction,
-) {
+export function errorMiddleware(err: Error, _req: Request, res: Response, _next: NextFunction) {
   if (err instanceof AppError) {
     res.status(err.statusCode).json({
       error: err.statusCode >= 500 ? 'Internal Server Error' : 'Bad Request',
