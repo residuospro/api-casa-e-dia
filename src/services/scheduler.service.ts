@@ -45,6 +45,8 @@ export class SchedulerService {
 
     const atrasadas = await schedulerRepository.atualizarExecucoesAtrasadas();
 
+    const perdidas = await schedulerRepository.marcarExecucoesPerdidas();
+
     const notificadasAtraso = await this.notificarAtrasadas();
 
     const duracao = Date.now() - inicio;
@@ -52,6 +54,7 @@ export class SchedulerService {
       `[Scheduler] Ciclo concluído em ${duracao}ms` +
         ` | ${notificadasHoje} notificação(ões) "Vence hoje"` +
         ` | ${atrasadas.count} execução(ões) marcada(s) como ATRASADA` +
+        ` | ${perdidas.count} execução(ões) marcada(s) como PERDIDA` +
         ` | ${notificadasAtraso} notificação(ões) de atraso`,
     );
   }

@@ -47,6 +47,7 @@ export enum StatusExecucao {
   CONCLUIDA = 'CONCLUIDA',
   ATRASADA = 'ATRASADA',
   CANCELADA = 'CANCELADA',
+  PERDIDA = 'PERDIDA',
 }
 
 export enum FrequenciaRecorrencia {

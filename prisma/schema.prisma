@@ -57,6 +57,7 @@ enum StatusExecucao {
   CONCLUIDA
   ATRASADA
   CANCELADA
+  PERDIDA
 }
 
 enum FrequenciaRecorrencia {

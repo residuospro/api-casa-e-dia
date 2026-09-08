@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "StatusExecucao" ADD VALUE 'PERDIDA' AFTER 'CANCELADA';

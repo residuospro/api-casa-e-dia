@@ -8,18 +8,20 @@ let task: ScheduledTask | null = null;
 const DIAS_A_FRENTE_SEM_CICLO = 7;
 
 export function initRecorrenciaScheduler(): void {
-  task = schedule('0 0 * * 0', async () => {
-    console.log('[RecorrenciaScheduler] Iniciando extensão semanal de recorrências...');
-    try {
-      await estenderRecorrencias();
-    } catch (error) {
-      console.error('[RecorrenciaScheduler] Erro ao estender recorrências:', error);
-    }
-  });
-
-  console.log(
-    '[RecorrenciaScheduler] Agendado para executar todo domingo à meia-noite (0 0 * * 0)',
+  task = schedule(
+    '0 18 * * 0',
+    async () => {
+      console.log('[RecorrenciaScheduler] Iniciando extensão semanal de recorrências...');
+      try {
+        await estenderRecorrencias();
+      } catch (error) {
+        console.error('[RecorrenciaScheduler] Erro ao estender recorrências:', error);
+      }
+    },
+    { timezone: 'America/Sao_Paulo' },
   );
+
+  console.log('[RecorrenciaScheduler] Agendado para executar todo domingo às 18h (0 18 * * 0)');
 }
 
 function calcularDiasAteFimCiclo(

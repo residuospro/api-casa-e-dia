@@ -76,6 +76,37 @@ export const schedulerRepository = {
     });
   },
 
+  async marcarExecucoesPerdidas() {
+    const atrasadas = await prisma.execucaoTarefa.findMany({
+      where: { status: 'ATRASADA' },
+      orderBy: [{ data: 'asc' }, { id: 'asc' }],
+      select: { id: true, tarefaId: true },
+    });
+
+    const porTarefa = new Map<string, string[]>();
+    for (const e of atrasadas) {
+      const lista = porTarefa.get(e.tarefaId) ?? [];
+      lista.push(e.id);
+      porTarefa.set(e.tarefaId, lista);
+    }
+
+    const idsPerdidas: string[] = [];
+    for (const ids of porTarefa.values()) {
+      if (ids.length > 1) {
+        idsPerdidas.push(...ids.slice(0, -1));
+      }
+    }
+
+    if (idsPerdidas.length === 0) return { count: 0 };
+
+    const resultado = await prisma.execucaoTarefa.updateMany({
+      where: { id: { in: idsPerdidas } },
+      data: { status: 'PERDIDA' },
+    });
+
+    return { count: resultado.count };
+  },
+
   findExecucoesAtrasadasParaNotificar() {
     return prisma.execucaoTarefa.findMany({
       where: {

@@ -740,7 +740,7 @@ export class TarefaService {
       execucao.status !== StatusExecucao.AGENDADA &&
       execucao.status !== StatusExecucao.ATRASADA
     ) {
-      throw new AppError('Execução já foi concluída ou cancelada', 400);
+      throw new AppError('Execução já foi concluída, cancelada ou marcada como perdida', 400);
     }
 
     let pontosObtidos = 0;
@@ -779,7 +779,7 @@ export class TarefaService {
       execucao.status !== StatusExecucao.AGENDADA &&
       execucao.status !== StatusExecucao.ATRASADA
     ) {
-      throw new AppError('Execução já foi concluída ou cancelada', 400);
+      throw new AppError('Execução já foi concluída, cancelada ou marcada como perdida', 400);
     }
 
     const tarefa = execucao.tarefa;
@@ -813,7 +813,7 @@ export class TarefaService {
       execucao.status !== StatusExecucao.AGENDADA &&
       execucao.status !== StatusExecucao.ATRASADA
     ) {
-      throw new AppError('Execução já foi concluída ou cancelada', 400);
+      throw new AppError('Execução já foi concluída, cancelada ou marcada como perdida', 400);
     }
 
     await tarefaRepository.updateExecucao(execucaoId, {
@@ -865,7 +865,9 @@ export class TarefaService {
   }
 
   async atualizarExecucoesAtrasadas(familiaId: string) {
-    return tarefaRepository.atualizarExecucoesAtrasadas(familiaId);
+    const atrasadas = await tarefaRepository.atualizarExecucoesAtrasadas(familiaId);
+    const perdidas = await tarefaRepository.marcarExecucoesPerdidasPorFamilia(familiaId);
+    return { atrasadas: atrasadas.count, perdidas: perdidas.count };
   }
 
   async ranking(familiaId: string) {

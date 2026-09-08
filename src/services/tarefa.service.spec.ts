@@ -16,6 +16,7 @@ jest.mock('../repositories/tarefa.repository', () => ({
     findExecucaoById: jest.fn(),
     updateExecucao: jest.fn(),
     atualizarExecucoesAtrasadas: jest.fn(),
+    marcarExecucoesPerdidasPorFamilia: jest.fn(),
     countTarefasAtivasByCicloGroupByResponsavel: jest.fn(),
   },
 }));
@@ -810,6 +811,15 @@ describe('TarefaService', () => {
       );
     });
 
+    it('deve lançar erro se execução estiver marcada como perdida', async () => {
+      tarefaRepository.findById.mockResolvedValue(makeTarefa());
+      tarefaRepository.findExecucaoById.mockResolvedValue(makeExecucao({ status: 'PERDIDA' }));
+
+      await expect(service.concluir('fam-id', 'tarefa-id', 'exec-id', 'membro-id')).rejects.toThrow(
+        AppError,
+      );
+    });
+
     it('deve lançar erro se tarefa estiver inativa', async () => {
       tarefaRepository.findById.mockResolvedValue(makeTarefa({ ativo: false }));
 
@@ -828,13 +838,24 @@ describe('TarefaService', () => {
   });
 
   describe('atualizarExecucoesAtrasadas', () => {
-    it('deve atualizar execuções atrasadas', async () => {
+    it('deve atualizar execuções atrasadas e marcar perdidas', async () => {
       tarefaRepository.atualizarExecucoesAtrasadas.mockResolvedValue({ count: 3 });
+      tarefaRepository.marcarExecucoesPerdidasPorFamilia.mockResolvedValue({ count: 2 });
 
       const resultado = await service.atualizarExecucoesAtrasadas('fam-id');
 
       expect(tarefaRepository.atualizarExecucoesAtrasadas).toHaveBeenCalledWith('fam-id');
-      expect(resultado).toEqual({ count: 3 });
+      expect(tarefaRepository.marcarExecucoesPerdidasPorFamilia).toHaveBeenCalledWith('fam-id');
+      expect(resultado).toEqual({ atrasadas: 3, perdidas: 2 });
+    });
+
+    it('deve marcar execuções perdidas sem atrasadas novas', async () => {
+      tarefaRepository.atualizarExecucoesAtrasadas.mockResolvedValue({ count: 0 });
+      tarefaRepository.marcarExecucoesPerdidasPorFamilia.mockResolvedValue({ count: 1 });
+
+      const resultado = await service.atualizarExecucoesAtrasadas('fam-id');
+
+      expect(resultado).toEqual({ atrasadas: 0, perdidas: 1 });
     });
   });
 
