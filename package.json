@@ -12,6 +12,7 @@
     "lint:check": "eslint \"{src,test}/**/*.ts\"",
     "prepare": "husky",
     "deploy:local": "cd docker/production && docker compose up -d --build",
+    "local:down": "cd docker/production && docker compose down",
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",

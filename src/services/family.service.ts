@@ -225,8 +225,13 @@ export class FamilyService {
     }
 
     const membros = await familyRepository.findMembrosByFamilia(familiaId);
+    const ids = membros.map((m: any) => m.id);
+    const estatisticas = await familyRepository.findEstatisticasMembros(familiaId, ids);
 
-    const resultado = membros.map(mapMembro);
+    const resultado = membros.map((m: any) => ({
+      ...mapMembro(m),
+      ...estatisticas[m.id],
+    }));
     definirCacheMembros('membros', familiaId, resultado);
     return resultado;
   }

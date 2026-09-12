@@ -825,6 +825,32 @@ export class TarefaService {
     };
   }
 
+  async perderExecucao(familiaId: string, execucaoId: string) {
+    const execucao = await tarefaRepository.findExecucaoById(execucaoId);
+    if (!execucao) {
+      throw new AppError('Execução não encontrada', 404);
+    }
+
+    if (execucao.tarefa.familiaId !== familiaId) {
+      throw new AppError('Execução não encontrada', 404);
+    }
+
+    if (
+      execucao.status !== StatusExecucao.AGENDADA &&
+      execucao.status !== StatusExecucao.ATRASADA
+    ) {
+      throw new AppError('Execução já foi concluída, cancelada ou marcada como perdida', 400);
+    }
+
+    await tarefaRepository.updateExecucao(execucaoId, {
+      status: StatusExecucao.PERDIDA,
+    });
+
+    return {
+      message: 'Execução marcada como perdida',
+    };
+  }
+
   async atualizarExecucao(
     familiaId: string,
     execucaoId: string,

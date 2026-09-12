@@ -260,6 +260,16 @@ export const tarefaController = {
     }
   },
 
+  async perderExecucao(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { familiaId, execucaoId } = req.params;
+      const resultado = await tarefaService.perderExecucao(familiaId, execucaoId);
+      res.json(resultado);
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async atualizarExecucao(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { familiaId, execucaoId } = req.params;

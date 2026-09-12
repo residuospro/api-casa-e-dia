@@ -18,6 +18,7 @@ jest.mock('../repositories/family.repository', () => ({
     deleteFamilia: jest.fn(),
     findConvitesPendentes: jest.fn(),
     updateMembroStatus: jest.fn(),
+    findEstatisticasMembros: jest.fn(),
     transaction: jest.fn(),
   },
 }));
@@ -363,11 +364,18 @@ describe('FamilyService', () => {
         }),
       ]);
 
+      familyRepository.findEstatisticasMembros.mockResolvedValue({
+        m1: { tarefas: 2, participante: 3, executou: 4, perdeu: 1 },
+        m2: { tarefas: 0, participante: 1, executou: 0, perdeu: 2 },
+      });
+
       const resultado = await service.listarMembros('fam-id');
 
       expect(resultado).toHaveLength(2);
       expect(resultado[0].nome).toBe('João');
       expect(resultado[1].nome).toBe('Pedrinho');
+      expect(resultado[0]).toMatchObject({ tarefas: 2, participante: 3, executou: 4, perdeu: 1 });
+      expect(resultado[1]).toMatchObject({ tarefas: 0, participante: 1, executou: 0, perdeu: 2 });
     });
 
     it('deve lançar erro se família não existir', async () => {

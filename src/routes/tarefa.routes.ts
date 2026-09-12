@@ -24,6 +24,11 @@ router.post(
   authMiddleware,
   tarefaController.cancelarExecucao,
 );
+router.post(
+  '/:familiaId/execucoes/:execucaoId/perder',
+  authMiddleware,
+  tarefaController.perderExecucao,
+);
 router.put('/:familiaId/execucoes/:execucaoId', authMiddleware, tarefaController.atualizarExecucao);
 router.get('/:familiaId/ranking', authMiddleware, tarefaController.ranking);
 

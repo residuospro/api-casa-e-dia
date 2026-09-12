@@ -77,6 +77,58 @@ export const familyRepository = {
     });
   },
 
+  async findEstatisticasMembros(familiaId: string, membrosId: string[]) {
+    const [tarefas, participantes, executadas, perdidas] = await Promise.all([
+      prisma.tarefa.groupBy({
+        by: ['responsavelAtualId'],
+        where: { familiaId, ativo: true, responsavelAtualId: { in: membrosId } },
+        _count: { _all: true },
+      }),
+      prisma.participanteTarefa.groupBy({
+        by: ['membroId'],
+        where: { membroId: { in: membrosId }, tarefa: { familiaId, ativo: true } },
+        _count: { _all: true },
+      }),
+      prisma.execucaoTarefa.groupBy({
+        by: ['concluidoPorId'],
+        where: { status: 'CONCLUIDA', concluidoPorId: { in: membrosId }, tarefa: { familiaId } },
+        _count: { _all: true },
+      }),
+      prisma.execucaoTarefa.groupBy({
+        by: ['executorId'],
+        where: { status: 'PERDIDA', executorId: { in: membrosId }, tarefa: { familiaId } },
+        _count: { _all: true },
+      }),
+    ]);
+
+    const estatisticas: Record<
+      string,
+      { tarefas: number; participante: number; executou: number; perdeu: number }
+    > = {};
+
+    membrosId.forEach((id) => {
+      estatisticas[id] = { tarefas: 0, participante: 0, executou: 0, perdeu: 0 };
+    });
+
+    tarefas.forEach((item) => {
+      if (item.responsavelAtualId) estatisticas[item.responsavelAtualId].tarefas = item._count._all;
+    });
+
+    participantes.forEach((item) => {
+      estatisticas[item.membroId].participante = item._count._all;
+    });
+
+    executadas.forEach((item) => {
+      if (item.concluidoPorId) estatisticas[item.concluidoPorId].executou = item._count._all;
+    });
+
+    perdidas.forEach((item) => {
+      if (item.executorId) estatisticas[item.executorId].perdeu = item._count._all;
+    });
+
+    return estatisticas;
+  },
+
   findMembroById(id: string) {
     return prisma.membroFamilia.findUnique({
       where: { id },

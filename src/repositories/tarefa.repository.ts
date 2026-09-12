@@ -396,10 +396,12 @@ export const tarefaRepository = {
        FROM "execucoes_tarefa"
        WHERE "tarefaId" = $1
        ORDER BY
-         CASE "status"
-           WHEN 'ATRASADA' THEN 0
-           WHEN 'AGENDADA' THEN 1
-           ELSE 2
+         CASE
+           WHEN "status" = 'ATRASADA' THEN 0
+           WHEN "status" = 'AGENDADA' AND "data" <= NOW() + INTERVAL '24 hours' THEN 1
+           WHEN "status" = 'PERDIDA' THEN 2
+           WHEN "status" = 'AGENDADA' THEN 3
+           ELSE 4
          END ASC,
          CASE WHEN "status" IN ('ATRASADA', 'AGENDADA')
            THEN EXTRACT(EPOCH FROM "data")::bigint
