@@ -113,6 +113,13 @@ export const familyRepository = {
     });
   },
 
+  findMembrosAceitosByUsuario(usuarioId: string) {
+    return prisma.membroFamilia.findMany({
+      where: { usuarioId, status: 'ACEITO' },
+      select: { id: true, permissao: true },
+    });
+  },
+
   findConvitesPendentes(usuarioId: string) {
     return prisma.membroFamilia.findMany({
       where: { usuarioId, status: 'PENDENTE' },

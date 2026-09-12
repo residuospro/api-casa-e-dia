@@ -38,7 +38,12 @@ function resolverDestinatarios(execucao: any): { usuarioId: string }[] {
 }
 
 export class SchedulerService {
-  async executar(): Promise<void> {
+  async executar(): Promise<{
+    notificacoesVenceHoje: number;
+    execucoesAtrasadas: number;
+    execucoesPerdidas: number;
+    notificacoesAtraso: number;
+  }> {
     const inicio = Date.now();
 
     const notificadasHoje = await this.notificarVenceHoje();
@@ -49,14 +54,23 @@ export class SchedulerService {
 
     const notificadasAtraso = await this.notificarAtrasadas();
 
+    const resultado = {
+      notificacoesVenceHoje: notificadasHoje,
+      execucoesAtrasadas: atrasadas.count,
+      execucoesPerdidas: perdidas.count,
+      notificacoesAtraso: notificadasAtraso,
+    };
+
     const duracao = Date.now() - inicio;
     console.log(
       `[Scheduler] Ciclo concluído em ${duracao}ms` +
-        ` | ${notificadasHoje} notificação(ões) "Vence hoje"` +
-        ` | ${atrasadas.count} execução(ões) marcada(s) como ATRASADA` +
-        ` | ${perdidas.count} execução(ões) marcada(s) como PERDIDA` +
-        ` | ${notificadasAtraso} notificação(ões) de atraso`,
+        ` | ${resultado.notificacoesVenceHoje} notificação(ões) "Vence hoje"` +
+        ` | ${resultado.execucoesAtrasadas} execução(ões) marcada(s) como ATRASADA` +
+        ` | ${resultado.execucoesPerdidas} execução(ões) marcada(s) como PERDIDA` +
+        ` | ${resultado.notificacoesAtraso} notificação(ões) de atraso`,
     );
+
+    return resultado;
   }
 
   private async notificarVenceHoje(): Promise<number> {

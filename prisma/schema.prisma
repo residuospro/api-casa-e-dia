@@ -258,3 +258,20 @@ model ExecucaoTarefa {
   @@index([executorId])
   @@map("execucoes_tarefa")
 }
+
+model SchedulerLog {
+  id            String   @id @default(cuid())
+  identificador String
+  nome          String
+  origem        String   @default("AGENDADO")
+  status        String
+  iniciadoEm    DateTime @default(now())
+  terminadoEm   DateTime?
+  duracaoMs     Int?
+  detalhes      Json?
+  erro          String?
+  criadoEm      DateTime @default(now())
+
+  @@index([identificador, criadoEm])
+  @@map("scheduler_logs")
+}

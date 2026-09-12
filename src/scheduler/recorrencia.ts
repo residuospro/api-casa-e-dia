@@ -2,18 +2,31 @@ import { schedule, type ScheduledTask } from 'node-cron';
 import { tarefaRepository } from '../repositories/tarefa.repository';
 import { gerarExecucoesRecorrentes } from '../services/tarefa.service';
 import type { Recorrencia } from '../models/tarefa.model';
+import { schedulerRegistry } from './registry';
 
 let task: ScheduledTask | null = null;
 
 const DIAS_A_FRENTE_SEM_CICLO = 7;
 
 export function initRecorrenciaScheduler(): void {
+  schedulerRegistry.registrar({
+    meta: {
+      identificador: 'recorrencia',
+      nome: 'Scheduler de recorrências',
+      descricao:
+        'Semanalmente estende as execuções futuras de tarefas com recorrência (recorrencia JSON), gerando novas execuções.',
+      cron: '0 18 * * 0',
+      timezone: 'America/Sao_Paulo',
+    },
+    executar: async () => estenderRecorrencias(),
+  });
+
   task = schedule(
     '0 18 * * 0',
     async () => {
       console.log('[RecorrenciaScheduler] Iniciando extensão semanal de recorrências...');
       try {
-        await estenderRecorrencias();
+        await schedulerRegistry.executar('recorrencia', 'AGENDADO');
       } catch (error) {
         console.error('[RecorrenciaScheduler] Erro ao estender recorrências:', error);
       }

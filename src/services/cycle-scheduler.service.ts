@@ -10,23 +10,47 @@ function getUsuarios(membros: { id: string; usuarioId: string | null; nome: stri
 }
 
 export class CycleSchedulerService {
-  async verificarCiclosExpirados(): Promise<void> {
+  async verificarCiclosExpirados(): Promise<{
+    ciclosExpirados: number;
+    ciclosRenovados: number;
+    ciclosEncerrados: number;
+    tarefasRotacionadas: number;
+  }> {
     const ciclos = await cicloRepository.findCiclosVencidosGlobally();
 
     if (ciclos.length === 0) {
       console.log('[CycleScheduler] Nenhum ciclo expirado encontrado');
-      return;
+
+      return {
+        ciclosExpirados: 0,
+        ciclosRenovados: 0,
+        ciclosEncerrados: 0,
+        tarefasRotacionadas: 0,
+      };
     }
 
     console.log(`[CycleScheduler] ${ciclos.length} ciclo(s) expirado(s) encontrado(s)`);
 
+    let renomeados = 0;
+    let encerrados = 0;
+    let rotacionadas = 0;
+
     for (const ciclo of ciclos) {
       if (ciclo.renovacaoAutomatica) {
-        await this.renovarCiclo(ciclo);
+        rotacionadas += await this.renovarCiclo(ciclo);
+        renomeados++;
       } else {
         await this.encerrarCiclo(ciclo);
+        encerrados++;
       }
     }
+
+    return {
+      ciclosExpirados: ciclos.length,
+      ciclosRenovados: renomeados,
+      ciclosEncerrados: encerrados,
+      tarefasRotacionadas: rotacionadas,
+    };
   }
 
   private async renovarCiclo(ciclo: {
@@ -36,7 +60,7 @@ export class CycleSchedulerService {
     duracaoDias: number;
     participantes: string[];
     revezamentoAutomatico: boolean;
-  }): Promise<void> {
+  }): Promise<number> {
     const agora = new Date();
 
     await cicloRepository.update(ciclo.id, {
@@ -52,6 +76,7 @@ export class CycleSchedulerService {
     }
 
     console.log(`[CycleScheduler] Ciclo "${ciclo.nome}" renovado automaticamente`);
+    return 1;
   }
 
   private async encerrarCiclo(ciclo: {
@@ -71,9 +96,9 @@ export class CycleSchedulerService {
     id: string;
     familiaId: string;
     participantes: string[];
-  }): Promise<void> {
+  }): Promise<number> {
     const tarefas = await tarefaRepository.findRevezamentoByCiclo(ciclo.id);
-    if (tarefas.length === 0) return;
+    if (tarefas.length === 0) return 0;
 
     let membros = ciclo.participantes;
 
@@ -82,7 +107,7 @@ export class CycleSchedulerService {
       membros = membrosAtivos.map((m) => m.id);
     }
 
-    if (membros.length === 0) return;
+    if (membros.length === 0) return 0;
 
     const cicloAtual = await cicloRepository.findById(ciclo.id);
     const proximaIteracao = (cicloAtual?.iteracao ?? 0) + 1;
@@ -108,6 +133,8 @@ export class CycleSchedulerService {
     }
 
     console.log(`[CycleScheduler] ${tarefas.length} tarefa(s) rotacionada(s) automaticamente`);
+
+    return tarefas.length;
   }
 
   private async getUsuariosNotificar(ciclo: {

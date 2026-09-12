@@ -5,8 +5,10 @@ import familyRoutes from './family.routes';
 import notificationRoutes from './notification.routes';
 import tarefaRoutes from './tarefa.routes';
 import cicloRoutes from './ciclo.routes';
-import { tarefaController } from '../controllers/tarefa.controller';
+import schedulerRoutes from './scheduler.routes';
+import { schedulerController } from '../controllers/scheduler.controller';
 import { authMiddleware } from '../middlewares/auth.middleware';
+import { adminMiddleware } from '../middlewares/admin.middleware';
 
 const router: Router = Router();
 
@@ -17,7 +19,8 @@ router.get('/health', (_req, res) => {
 router.post(
   '/scheduler/recorrencia',
   authMiddleware,
-  tarefaController.executarSchedulerRecorrencia,
+  adminMiddleware,
+  schedulerController.executarRecorrencia,
 );
 
 router.use('/auth', authRoutes);
@@ -26,5 +29,6 @@ router.use('/families', familyRoutes);
 router.use('/tarefas', tarefaRoutes);
 router.use('/ciclos', cicloRoutes);
 router.use('/notifications', notificationRoutes);
+router.use('/scheduler', schedulerRoutes);
 
 export default router;
