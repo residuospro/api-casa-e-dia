@@ -94,11 +94,18 @@ export const familyRepository = {
         where: { status: 'CONCLUIDA', concluidoPorId: { in: membrosId }, tarefa: { familiaId } },
         _count: { _all: true },
       }),
-      prisma.execucaoTarefa.groupBy({
-        by: ['executorId'],
-        where: { status: 'PERDIDA', executorId: { in: membrosId }, tarefa: { familiaId } },
-        _count: { _all: true },
-      }),
+      prisma.$queryRawUnsafe<Array<{ membroId: string | null; total: number }>>(
+        `SELECT COALESCE(e."executorId", t."responsavelAtualId") AS "membroId",
+                COUNT(*)::int AS "total"
+         FROM "execucoes_tarefa" e
+         JOIN "tarefas" t ON t."id" = e."tarefaId"
+         WHERE e."status" = 'PERDIDA'
+           AND t."familiaId" = $1
+           AND COALESCE(e."executorId", t."responsavelAtualId") = ANY($2::text[])
+         GROUP BY COALESCE(e."executorId", t."responsavelAtualId")`,
+        familiaId,
+        membrosId,
+      ),
     ]);
 
     const estatisticas: Record<
@@ -123,7 +130,7 @@ export const familyRepository = {
     });
 
     perdidas.forEach((item) => {
-      if (item.executorId) estatisticas[item.executorId].perdeu = item._count._all;
+      if (item.membroId) estatisticas[item.membroId].perdeu = item.total;
     });
 
     return estatisticas;
